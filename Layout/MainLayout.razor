@@ -1,0 +1,12 @@
+﻿@inherits LayoutComponentBase
+
+@Body
+
+@code {
+    [Inject] public HttpClient HttpClient { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CompilerSerivce.InitAsync(this.HttpClient);
+    }
+}

@@ -1,0 +1,45 @@
+﻿@page "/"
+
+<PageTitle>Home balls?!?!</PageTitle>
+
+<h1>Hello, world!</h1>
+
+Welcome to your new app.
+
+<div>
+	<textarea cols="50" rows="25" @bind="_textarea" @bind:event="oninput"></textarea>
+</div>
+
+<button onclick="@run">Compile And Run</button>
+
+
+@code {
+    [Inject] public CompilerSerivce CompilerService { get; set; }
+
+    string _textarea = @"
+using System;
+
+namespace MyApp
+{
+    class Program
+    {
+        static void Main(string args)
+        {
+            Console.WriteLine(""Hello World!"");
+        }
+    }
+}
+";
+
+    async Task run()
+    {
+        try
+        {
+            await CompilerSerivce.Compile(_textarea);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"FAILED\n{ex.Message}");
+        }
+    }
+}
