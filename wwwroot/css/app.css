@@ -1,3 +1,9 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
 .valid.modified:not([type=checkbox]) {
     outline: 1px solid #26b050;
 }
@@ -75,3 +81,9 @@
 code {
     color: #c02d76;
 }
+
+.editor-container {
+    height: calc(100vh - 54px);
+    position: relative;
+}
+

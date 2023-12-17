@@ -1,0 +1,27 @@
+﻿@using Microsoft.JSInterop
+
+<div class="editor-container" id="@EditorId"></div>
+
+ @code {
+    [Inject]
+    public IJSInProcessRuntime JsRuntime { get; set; }
+
+    [Parameter]
+    public string Code { get; set; }
+
+    [Parameter]
+    public EventCallback<string> CodeChanged { get; set; }
+
+    [Parameter]
+    public string EditorId { get; set; } = "monaco-editor";
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            this.JsRuntime.InvokeVoid("Try.Editor.create", EditorId, this.Code ?? "CoreConstants.MainComponentDefaultFileContent");
+        }
+        
+        base.OnAfterRender(firstRender);
+    }
+}
