@@ -11,7 +11,10 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="8.0.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Features" Version="4.8.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="4.8.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.8.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Features" Version="4.8.0" />
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" Version="4.2.0" />
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="4.2.0" />
   </ItemGroup>

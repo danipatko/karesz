@@ -9,6 +9,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await CompilerSerivce.InitAsync(this.HttpClient);
+        await WorkspaceService.InitAsync(HttpClient);
+        await CompilerSerivce.InitAsync(WorkspaceService.BasicReferenceAssemblies);
     }
 }

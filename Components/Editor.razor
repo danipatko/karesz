@@ -2,12 +2,17 @@
 
 <div class="editor-container" id="@EditorId"></div>
 
- @code {
+@code {
+    private DotNetObjectReference<Editor>? dotnetObjRef;
+
     [Inject]
     public IJSInProcessRuntime JsRuntime { get; set; }
 
+    [Inject]
+    public WorkspaceService Workspace { get; set; }
+
     [Parameter]
-    public string Code { get; set; }
+    public string Code { get; set; } = string.Empty;
 
     [Parameter]
     public EventCallback<string> CodeChanged { get; set; }
@@ -19,9 +24,24 @@
     {
         if (firstRender)
         {
-            this.JsRuntime.InvokeVoid("Try.Editor.create", EditorId, this.Code ?? "CoreConstants.MainComponentDefaultFileContent");
+            dotnetObjRef = DotNetObjectReference.Create(this);
+            this.JsRuntime.InvokeVoid("Editor.create", EditorId, this.Code, dotnetObjRef);
         }
-        
+
         base.OnAfterRender(firstRender);
+    }
+
+    [JSInvokable]
+    public void updateCode(string code)
+    {
+        Code = code;
+    }
+
+    [JSInvokable]
+    public async Task getCompletionItems(string code, int offset)
+    {
+        Code = code;
+        Console.WriteLine($"Received {offset}");
+        await WorkspaceService.TabComplete(code, offset);
     }
 }

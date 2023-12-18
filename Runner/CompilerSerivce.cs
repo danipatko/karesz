@@ -1,9 +1,5 @@
-﻿using Microsoft.JSInterop;
-using System.ComponentModel.DataAnnotations;
-using System.Runtime;
-using Microsoft.CodeAnalysis.CSharp;
+﻿using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis;
-using System.Collections.Concurrent;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.CodeAnalysis.Emit;
 using System.Reflection;
@@ -14,8 +10,10 @@ namespace karesz.Runner
     {
         public const string DefaultRootNamespace = $"{nameof(karesz)}.{nameof(Runner)}";
 
-        private static CSharpCompilation baseCompilation;
-        private static CSharpParseOptions cSharpParseOptions;
+        private static CSharpCompilation BaseCompilation;
+        private static CSharpParseOptions CSharpParseOptions;
+
+        private static byte[] AssemblyBytes = [];
 
         private static readonly CSharpCompilationOptions compilationOptions = new(
                     OutputKind.DynamicallyLinkedLibrary,
@@ -30,65 +28,23 @@ namespace karesz.Runner
 
         private static readonly BindingFlags bindingFlags = BindingFlags.InvokeMethod | BindingFlags.Public | BindingFlags.Static | BindingFlags.IgnoreCase | BindingFlags.NonPublic | BindingFlags.InvokeMethod;
 
-        public static async Task InitAsync(HttpClient httpClient)
+        public static async Task InitAsync(List<PortableExecutableReference> basicReferenceAssemblies)
         {
-            var basicReferenceAssemblyRoots = new[]
-            {
-                typeof(Console).Assembly, // System.Console
-                typeof(Uri).Assembly, // System.Private.Uri
-                typeof(AssemblyTargetedPatchBandAttribute).Assembly, // System.Private.CoreLib
-                typeof(IQueryable).Assembly, // System.Linq.Expressions
-                typeof(IJSRuntime).Assembly, // Microsoft.JSInterop
-                typeof(RequiredAttribute).Assembly, // System.ComponentModel.Annotations
-                typeof(Thread).Assembly,
-                typeof(CompilerSerivce).Assembly
-            };
-
-            var assemblyNames = basicReferenceAssemblyRoots
-                .SelectMany(assembly => assembly.GetReferencedAssemblies().Concat(new[] { assembly.GetName() }))
-                .Select(x => x.Name)
-                .Distinct()
-                .ToList();
-
-            var assemblyStreams = await GetStreamFromHttpAsync(httpClient, assemblyNames!);
-            var allReferenceAssemblies = assemblyStreams.ToDictionary(a => a.Key, a => MetadataReference.CreateFromStream(a.Value));
-
-            var basicReferenceAssemblies = allReferenceAssemblies
-                .Where(a => basicReferenceAssemblyRoots
-                    .Select(x => x.GetName().Name)
-                    .Union(basicReferenceAssemblyRoots.SelectMany(assembly => assembly.GetReferencedAssemblies().Select(z => z.Name)))
-                    .Any(n => n == a.Key))
-                .Select(a => a.Value)
-                .ToList();
-
-            baseCompilation = CSharpCompilation.Create(DefaultRootNamespace, Array.Empty<SyntaxTree>(), basicReferenceAssemblies, compilationOptions);
-            cSharpParseOptions = new CSharpParseOptions(LanguageVersion.Preview);
-        }
-
-        private static async Task<IDictionary<string, Stream>> GetStreamFromHttpAsync(HttpClient httpClient, IEnumerable<string> assemblyNames)
-        {
-            var streams = new ConcurrentDictionary<string, Stream>();
-
-            await Task.WhenAll(
-                assemblyNames.Select(async assemblyName =>
-                {
-                    // Console.WriteLine($"loading {assemblyName}");
-                    var result = await httpClient.GetAsync($"/_framework/{assemblyName}.dll");
-                    result.EnsureSuccessStatusCode();
-                    streams.TryAdd(assemblyName, await result.Content.ReadAsStreamAsync());
-                }));
-
-            return streams;
+            BaseCompilation = CSharpCompilation.Create(DefaultRootNamespace, Array.Empty<SyntaxTree>(), basicReferenceAssemblies, compilationOptions);
+            CSharpParseOptions = new CSharpParseOptions(LanguageVersion.Preview);
         }
 
         public static async Task Compile(string code) => await Task.Run(() =>
         {
             var sourceCode = SourceText.From(code);
             var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
-            var compilation = baseCompilation.AddSyntaxTrees(syntaxTree);
+            var compilation = BaseCompilation.AddSyntaxTrees(syntaxTree);
 
-            using MemoryStream ms = new();
+            MemoryStream ms = new();
             EmitResult result = compilation.Emit(ms);
+
+            ms.Seek(0, SeekOrigin.Begin);
+            AssemblyBytes = ms.ToArray();
 
             if (!result.Success)
             {
@@ -103,9 +59,7 @@ namespace karesz.Runner
             }
             else
             {
-                ms.Seek(0, SeekOrigin.Begin);
-                var assembly = Assembly.Load(ms.ToArray());
-
+                var assembly = Assembly.Load(AssemblyBytes);
                 Console.WriteLine(string.Join(", ", assembly.GetTypes().Select(x => x.FullName)));
 
                 Type type = assembly.GetType("MyApp.Program")!;
