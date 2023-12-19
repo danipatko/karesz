@@ -1,7 +1,6 @@
 require.config({ paths: { 'vs': 'lib/monaco-editor/min/vs' } });
 
 let _dotNetInstance;
-
 const throttleLastTimeFuncNameMappings = {};
 
 function registerLangugageProvider(_editor) {
@@ -13,42 +12,6 @@ function registerLangugageProvider(_editor) {
 
             _dotNetInstance && _dotNetInstance?.invokeMethodAsync('getCompletionItems', _editor.getValue(), offset);
 
-            //var textUntilPosition = model.getValueInRange({
-            //    startLineNumber: 1,
-            //    startColumn: 1,
-            //    endLineNumber: position.lineNumber,
-            //    endColumn: position.column,
-            //});
-
-            //if (language == 'razor') {
-            //    if ((textUntilPosition.match(/{/g) || []).length !== (textUntilPosition.match(/}/g) || []).length) {
-            //        var data = await fetch("editor/snippets/csharp.json").then((response) => response.json());
-            //    } else {
-            //        var data = await fetch("editor/snippets/mudblazor.json").then((response) => response.json());
-            //    }
-            //} else {
-            //    var data = await fetch("editor/snippets/csharp.json").then((response) => response.json());
-            //}
-
-            //var word = model.getWordUntilPosition(position);
-            //var range = {
-            //    startLineNumber: position.lineNumber,
-            //    endLineNumber: position.lineNumber,
-            //    startColumn: word.startColumn,
-            //    endColumn: word.endColumn,
-            //};
-
-            //var response = Object.keys(data).map(key => {
-            //    return {
-            //        label: data[key].prefix,
-            //        detail: data[key].description,
-            //        documentation: data[key].body.join('\n'),
-            //        insertText: data[key].body.join('\n'),
-            //        kind: monaco.languages.CompletionItemKind.Snippet,
-            //        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            //        range: range
-            //    }
-            //});
             return {
                 suggestions: [],
             };
@@ -73,7 +36,6 @@ function throttle(func, timeFrame, id) {
         throttleLastTimeFuncNameMappings[id] = now;
     }
 }
-
 
 window.Editor = window.Editor || (function () {
     let _editor;

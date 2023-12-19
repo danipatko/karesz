@@ -5,7 +5,7 @@
 
 <FluentSplitter Orientation="Orientation.Horizontal" BarSize="6" Panel1MinSize="30%" Panel2MinSize="50px">
     <Panel1>
-        <Editor @bind-Code=Code />
+        <Editor />
     </Panel1>
     <Panel2>
         <div class="demopanel">
@@ -25,31 +25,11 @@
 @code {
     [Inject] public CompilerSerivce CompilerService { get; set; }
 
-    string Code = @"using System;
-using karesz.Runner;
-
-namespace MyApp
-{
-    class Program
-    {
-        static void Main(string args)
-        {
-            Console.WriteLine(""Hello World!"");
-
-            var cs = new CompilerSerivce();
-            Console.WriteLine(cs.ToString());
-
-            CompilerSerivce.EpicTestFunction();
-        }
-    }
-}
-";
-
     async Task run()
     {
         try
         {
-            await CompilerSerivce.Compile(Code);
+            await CompilerSerivce.Compile(WorkspaceService.Code);
         }
         catch (Exception ex)
         {

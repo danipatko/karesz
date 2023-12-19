@@ -10,17 +10,24 @@ namespace karesz.Runner
     public class WorkspaceService
     {
         static readonly AdhocWorkspace Workspace = new(MefHostServices.DefaultHost);
-
         public static List<PortableExecutableReference> BasicReferenceAssemblies;
 
-        public static Document Document;
+        public static Document Document { get; private set; }
 
-        // private static LanguageProvider Provider = new();
+        private static string _code = string.Empty;
+        public static string Code
+        {
+            get => _code;
+            set
+            {
+                Document = Document.WithText(SourceText.From(value));
+                _code = value;
+            }
+        }
 
         // edit allowed references here
         static readonly Assembly[] basicReferenceAssemblyRoots =
             {
-                typeof(PortableExecutableKinds).Assembly,
                 typeof(CompletionService).Assembly,
                 typeof(Console).Assembly, // System.Console
                 typeof(IQueryable).Assembly, // System.Linq.Expressions
@@ -31,14 +38,18 @@ namespace karesz.Runner
 
         public static async Task InitAsync(HttpClient httpClient)
         {
+            // load assemblies
             await GetReferences(httpClient);
-
+            // create 'virutal' project (needed for autocomplete services)
             var projectInfo = ProjectInfo
                 .Create(ProjectId.CreateNewId(), VersionStamp.Create(), PROJECT_NAME, PROJECT_NAME, LanguageNames.CSharp)
                 .WithMetadataReferences(BasicReferenceAssemblies);
 
             var project = Workspace.AddProject(projectInfo);
+            // document is the snippet edited by the user
+            // only a single document is used (as Diak.cs)
             Document = Workspace.AddDocument(project.Id, DEFAULT_DOCUMENT_NAME, SourceText.From(DEFAULT_TEMPLATE));
+            Code = DEFAULT_TEMPLATE;
         }
 
         private static async Task GetReferences(HttpClient httpClient)
@@ -76,16 +87,10 @@ namespace karesz.Runner
             return streams;
         }
 
-        public static async Task TabComplete(string code, int offset)
-        {
-            Document = Document.WithText(SourceText.From(code));
-            await LanguageProvider.GetCompletionItems(Document, offset);
-        }
-
         // CONSTANTS
-        const string PROJECT_NAME = "Karesz";
-        const string DEFAULT_DOCUMENT_NAME = "Diak.cs";
-        const string DEFAULT_TEMPLATE = @"using System;
+        public const string PROJECT_NAME = "Karesz";
+        public const string DEFAULT_DOCUMENT_NAME = "Diak.cs";
+        public const string DEFAULT_TEMPLATE = @"using System;
 using karesz.Runner;
 
 namespace MyApp
@@ -104,6 +109,5 @@ namespace MyApp
     }
 }
 ";
-
     }
 }
