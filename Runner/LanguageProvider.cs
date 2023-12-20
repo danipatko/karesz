@@ -1,10 +1,10 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Completion;
-using Microsoft.CodeAnalysis.Recommendations;
+using System.Text.RegularExpressions;
 
 namespace karesz.Runner
 {
-    public class LanguageProvider
+    public partial class LanguageProvider
     {
         private static CompletionService? CompletionService;
 
@@ -12,53 +12,75 @@ namespace karesz.Runner
         private const string InsertionText = nameof(InsertionText); // same as: "InsertionText"
         private const string SymbolKind = nameof(SymbolKind);
         private const string SymbolName = nameof(SymbolName);
+        private const string DescriptionProperty = nameof(DescriptionProperty);
         private const string ShouldProvideParenthesisCompletion = nameof(ShouldProvideParenthesisCompletion);
 
-        public static async Task GetCompletionItems(string code, int offset)
+        public static async Task<IEnumerable<Suggestion>> GetCompletionItems(string code, int offset)
         {
             WorkspaceService.Code = code;
 
             CompletionService ??= CompletionService.GetService(WorkspaceService.Document);
-            if (CompletionService == null) return;
+            if (CompletionService == null) return [];
 
             var wordToComplete = GetPartialWord(code, offset);
 
             var suggestedCompletions = await CompletionService.GetCompletionsAsync(WorkspaceService.Document, offset).ConfigureAwait(false);
-            var result = suggestedCompletions.ItemsList
-                .Where(ci => ci.FilterText.StartsWith(wordToComplete, StringComparison.OrdinalIgnoreCase))
-                .Select(TryConvertToSuggestion);
- 
-            Console.WriteLine(string.Join("\n", result));
+            return suggestedCompletions.ItemsList
+                .Where(ci => string.IsNullOrEmpty(wordToComplete) || ci.FilterText.StartsWith(wordToComplete, StringComparison.OrdinalIgnoreCase))
+                .Select(TryConvertToSuggestion)
+                .Where(x => x != null) as IEnumerable<Suggestion>;
         }
 
-        private static Suggestion TryConvertToSuggestion(CompletionItem ci)
+        [GeneratedRegex(@"^Text\|(?<word>\w+)\sKeyword", RegexOptions.IgnoreCase | RegexOptions.Compiled, "en-150")]
+        private static partial Regex KeywordRe();
+
+        [GeneratedRegex(@"^Text\|(?<word>[^\s\|]+)", RegexOptions.IgnoreCase | RegexOptions.Compiled, "en-150")]
+        private static partial Regex SnippetRe();
+
+        private static Suggestion? TryConvertToSuggestion(CompletionItem ci)
         {
-            Console.WriteLine(string.Join(", ", ci.Properties.Keys));
-            Console.WriteLine(string.Join(", ", ci.Properties.Values));
+            if (!ci.Properties.Keys.Any()) return null;
 
-            var insertionText = ci.Properties.GetValueOrDefault(InsertionText, ci.DisplayText);
+            ci.Properties.TryGetValue(InsertionText, out string? insertionText);
+            var kind = ci.Properties.TryGetValue(SymbolKind, out string? symbolKindString)  // is number
+                                        ? MapSymbolKinds.GetValueOrDefault((SymbolKind)int.Parse(symbolKindString), MonacoSymbolKind.Object)
+                                        : MonacoSymbolKind.None;
 
-            var kind = !ci.Properties.TryGetValue(SymbolKind, out var symbolKindString) 
-                ? MonacoSymbolKind.Key
-                : MapSymbolKinds.GetValueOrDefault((SymbolKind)int.Parse(symbolKindString!), MonacoSymbolKind.Object);
+            // DescriptionProperty may also include code snippets, but only provides a SnippetId of which I could
+            // not find any documentation. Instead, snippets are loaded from JS and do not depend on context.
+            if (ci.Properties.TryGetValue(DescriptionProperty, out var description))
+            {
+                // check for keywords
+                var keywordMatches = KeywordRe().Matches(description);
+                if (keywordMatches.Count > 0)
+                {
+                    insertionText ??= keywordMatches[0].Groups["word"].Value;
+                    kind = MonacoSymbolKind.Key;
+                }
+            }
 
+            // Indicates that parenthesis shoud be placed after function name
             bool parenthesis = ci.Properties.TryGetValue(ShouldProvideParenthesisCompletion, out var p) && p == bool.TrueString;
 
+            if (kind == MonacoSymbolKind.None || insertionText == null) 
+                return null;
+
             return new Suggestion {
-                SymbolKind = kind, 
-                InsertionText = parenthesis ? insertionText + "(${1})" : insertionText, // add parenthesis and move cursor
-                Description = ci.InlineDescription, 
-                DisplayText = ci.DisplayText
+                Kind = (int)kind,
+                InsertText = parenthesis ? insertionText + "(${1})" : insertionText, 
+                AsSnippet = parenthesis, // also move cursor
+                Documentation = ci.InlineDescription, 
+                Label = ci.DisplayText
             };
         }
 
         public class Suggestion
         {
-            public MonacoSymbolKind SymbolKind { get; set; }
-            public string InsertionText { get; set; }
-            public string Description { get; set; }
-            public string DisplayText { get; set; }
-            public override string ToString() => $"{SymbolKind} {DisplayText} | insert {InsertionText} | desc {Description}";
+            public int Kind { get; set; }
+            public bool AsSnippet { get; set; }
+            public string InsertText { get; set; }
+            public string Documentation { get; set; }
+            public string Label { get; set; }
         }
 
         // enum values differ in monaco editor API and Roslyn
@@ -77,6 +99,7 @@ namespace karesz.Runner
         // https://microsoft.github.io/monaco-editor/typedoc/enums/languages.SymbolKind.html
         public enum MonacoSymbolKind : int
         {
+            None = -1,
             Array = 17,
             Boolean = 16,
             Class = 4,
@@ -120,7 +143,6 @@ namespace karesz.Runner
 
             return code[index..offset];
         }
-
     }
 }
 

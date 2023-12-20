@@ -11,7 +11,6 @@ namespace karesz.Runner
     {
         static readonly AdhocWorkspace Workspace = new(MefHostServices.DefaultHost);
         public static List<PortableExecutableReference> BasicReferenceAssemblies;
-
         public static Document Document { get; private set; }
 
         private static string _code = string.Empty;

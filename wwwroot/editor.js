@@ -3,18 +3,69 @@ require.config({ paths: { 'vs': 'lib/monaco-editor/min/vs' } });
 let _dotNetInstance;
 const throttleLastTimeFuncNameMappings = {};
 
+
+
 function registerLangugageProvider(_editor) {
+    const MonacoSymbolMap = {
+        17: monaco.languages.CompletionItemKind.Array,
+        16: monaco.languages.CompletionItemKind.Boolean,
+        4: monaco.languages.CompletionItemKind.Class,
+        13: monaco.languages.CompletionItemKind.Constant,
+        8: monaco.languages.CompletionItemKind.Constructor,
+        9: monaco.languages.CompletionItemKind.Enum,
+        21: monaco.languages.CompletionItemKind.EnumMember,
+        23: monaco.languages.CompletionItemKind.Event,
+        7: monaco.languages.CompletionItemKind.Field,
+        0: monaco.languages.CompletionItemKind.File,
+        11: monaco.languages.CompletionItemKind.Function,
+        10: monaco.languages.CompletionItemKind.Interface,
+        19: monaco.languages.CompletionItemKind.Keyword,
+        5: monaco.languages.CompletionItemKind.Method,
+        1: monaco.languages.CompletionItemKind.Module,
+        2: monaco.languages.CompletionItemKind.Namespace,
+        20: monaco.languages.CompletionItemKind.Null,
+        15: monaco.languages.CompletionItemKind.Number,
+        18: monaco.languages.CompletionItemKind.Object,
+        24: monaco.languages.CompletionItemKind.Operator,
+        3: monaco.languages.CompletionItemKind.Package,
+        6: monaco.languages.CompletionItemKind.Property,
+        14: monaco.languages.CompletionItemKind.String,
+        22: monaco.languages.CompletionItemKind.Struct,
+        25: monaco.languages.CompletionItemKind.TypeParameter,
+        12: monaco.languages.CompletionItemKind.Variable
+    }
+
     monaco.languages.registerCompletionItemProvider('csharp', {
         provideCompletionItems: async function (model, position) {
             const offset = model.getOffsetAt(position);
             console.log("current offset is " + offset);
-            console.log(_dotNetInstance);
 
-            _dotNetInstance && _dotNetInstance?.invokeMethodAsync('getCompletionItems', _editor.getValue(), offset);
-
-            return {
-                suggestions: [],
+            const word = model.getWordUntilPosition(position);
+            const range = {
+                startLineNumber: position.lineNumber,
+                endLineNumber: position.lineNumber,
+                startColumn: word.startColumn,
+                endColumn: word.endColumn,
             };
+
+            if (_dotNetInstance) {
+                const data = await _dotNetInstance.invokeMethodAsync('getCompletionItems', _editor.getValue(), offset)
+                console.dir(data);
+
+                return {
+                    suggestions: data.map(({ asSnippet, ...x }) => {
+                        return {
+                            ...x,
+                            range,
+                            kind: MonacoSymbolMap[x.kind],
+                            // move cursor if asSnippet is true
+                            ...(asSnippet ? { insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet } : {})
+                        }
+                    })
+                };
+            }
+
+            return { suggestions: [] };
         },
     });
 }

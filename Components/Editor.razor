@@ -32,9 +32,10 @@
     }
 
     [JSInvokable]
-    public async Task getCompletionItems(string code, int offset)
+    public async Task<IEnumerable<object>> getCompletionItems(string code, int offset)
     {
-        Console.WriteLine(code);
-        await LanguageProvider.GetCompletionItems(code, offset);
+        var result = await LanguageProvider.GetCompletionItems(code, offset);
+        // Console.WriteLine(string.Join("\n", result));
+        return result.Select(x => (object)x);
     }
 }
