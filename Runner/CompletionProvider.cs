@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace karesz.Runner
 {
-    public partial class LanguageProvider
+    public partial class CompletionProvider
     {
         private static CompletionService? CompletionService;
 
@@ -15,12 +15,21 @@ namespace karesz.Runner
         private const string DescriptionProperty = nameof(DescriptionProperty);
         private const string ShouldProvideParenthesisCompletion = nameof(ShouldProvideParenthesisCompletion);
 
+        public class Suggestion
+        {
+            public int Kind { get; set; }
+            public bool AsSnippet { get; set; }
+            public string InsertText { get; set; }
+            public string Documentation { get; set; }
+            public string Label { get; set; }
+        }
+
         public static async Task<IEnumerable<Suggestion>> GetCompletionItems(string code, int offset)
         {
             WorkspaceService.Code = code;
 
             CompletionService ??= CompletionService.GetService(WorkspaceService.Document);
-            if (CompletionService == null) return [];
+            if (CompletionService == null) return []; // should not be possible
 
             var wordToComplete = GetPartialWord(code, offset);
 
@@ -34,9 +43,11 @@ namespace karesz.Runner
         [GeneratedRegex(@"^Text\|(?<word>\w+)\sKeyword", RegexOptions.IgnoreCase | RegexOptions.Compiled, "en-150")]
         private static partial Regex KeywordRe();
 
-        [GeneratedRegex(@"^Text\|(?<word>[^\s\|]+)", RegexOptions.IgnoreCase | RegexOptions.Compiled, "en-150")]
-        private static partial Regex SnippetRe();
-
+        /// <summary>
+        /// Attempts to convert a CompletionItem to a Suggestion.
+        /// Returns null if the CompletionItem is a snippet or unhandled.
+        /// </summary>
+        /// <returns></returns>
         private static Suggestion? TryConvertToSuggestion(CompletionItem ci)
         {
             if (!ci.Properties.Keys.Any()) return null;
@@ -47,7 +58,7 @@ namespace karesz.Runner
                                         : MonacoSymbolKind.None;
 
             // DescriptionProperty may also include code snippets, but only provides a SnippetId of which I could
-            // not find any documentation. Instead, snippets are loaded from JS and do not depend on context.
+            // not find any documentation. Instead, snippets are loaded from static JS and do not depend on the context.
             if (ci.Properties.TryGetValue(DescriptionProperty, out var description))
             {
                 // check for keywords
@@ -72,15 +83,6 @@ namespace karesz.Runner
                 Documentation = ci.InlineDescription, 
                 Label = ci.DisplayText
             };
-        }
-
-        public class Suggestion
-        {
-            public int Kind { get; set; }
-            public bool AsSnippet { get; set; }
-            public string InsertText { get; set; }
-            public string Documentation { get; set; }
-            public string Label { get; set; }
         }
 
         // enum values differ in monaco editor API and Roslyn
@@ -128,6 +130,7 @@ namespace karesz.Runner
             Variable = 12
         }
 
+        // get unfinished word at position
         private static string GetPartialWord(string code, int offset)
         {
             if (string.IsNullOrEmpty(code) || offset == 0)

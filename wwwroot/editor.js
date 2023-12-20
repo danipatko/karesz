@@ -1,11 +1,46 @@
 require.config({ paths: { 'vs': 'lib/monaco-editor/min/vs' } });
 
 let _dotNetInstance;
-const throttleLastTimeFuncNameMappings = {};
+const COMPILE_TIMEFRAME = 500; // ms
 
+function addListeners(_editor) {
+    // compile after x time without changes
+    let timeoutID;
+    const throttle = (func, timeFrame) => {
+        clearTimeout(timeoutID);
+        timeoutID = setTimeout(func, timeFrame);
+    }
 
+    // c# and monaco severity enum values differ
+    const markerSeverityMap = {
+        0: monaco.MarkerSeverity.Hint,
+        1: monaco.MarkerSeverity.Info,
+        2: monaco.MarkerSeverity.Warning,
+        3: monaco.MarkerSeverity.Error,
+    }
+
+    const model = _editor.getModel()
+    model.onDidChangeContent(() => {
+        if (_dotNetInstance) {
+            throttle(async () => {
+                const markers = await _dotNetInstance.invokeMethodAsync("getDiagnostics", _editor.getValue())
+                monaco.editor.setModelMarkers(model, "owner", markers.map(x => ({ ...x, severity: markerSeverityMap[x.severity] })));
+
+            }, COMPILE_TIMEFRAME)
+        }
+    });
+
+    // handle CTRL+S
+    window.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key == 's') {
+            e.preventDefault();
+            // TODO launch compile on save
+        }
+    });
+}
 
 function registerLangugageProvider(_editor) {
+    // converts integer to enum
     const MonacoSymbolMap = {
         17: monaco.languages.CompletionItemKind.Array,
         16: monaco.languages.CompletionItemKind.Boolean,
@@ -35,10 +70,11 @@ function registerLangugageProvider(_editor) {
         12: monaco.languages.CompletionItemKind.Variable
     }
 
+    // autocomplete
     monaco.languages.registerCompletionItemProvider('csharp', {
-        provideCompletionItems: async function (model, position) {
+        provideCompletionItems: async (model, position) => {
             const offset = model.getOffsetAt(position);
-            console.log("current offset is " + offset);
+            // console.log("current offset is " + offset);
 
             const word = model.getWordUntilPosition(position);
             const range = {
@@ -50,7 +86,6 @@ function registerLangugageProvider(_editor) {
 
             if (_dotNetInstance) {
                 const data = await _dotNetInstance.invokeMethodAsync('getCompletionItems', _editor.getValue(), offset)
-                console.dir(data);
 
                 return {
                     suggestions: data.map(({ asSnippet, ...x }) => {
@@ -68,43 +103,50 @@ function registerLangugageProvider(_editor) {
             return { suggestions: [] };
         },
     });
+
+    // hover information
+    monaco.languages.registerHoverProvider('csharp', {
+        provideHover: async (model, position) => {
+            const offset = model.getOffsetAt(position);
+            const word = model.getWordUntilPosition(position);
+            const range = {
+                startLineNumber: position.lineNumber,
+                endLineNumber: position.lineNumber,
+                startColumn: word.startColumn,
+                endColumn: word.endColumn,
+            };
+
+            if (_dotNetInstance) {
+                const data = await _dotNetInstance.invokeMethodAsync('getHoverinfo', offset);
+                if (data != null) {
+                    return { range, contents: [{ value: `\`\`\`csharp\n${data}\n\`\`\`` }] }
+                }
+            }
+        }
+    });
 }
 
-//function onKeyDown(e) {
-//    if (e.ctrlKey && e.key == 's') {
-//        e.preventDefault();
 
-//        if (_dotNetInstance && _dotNetInstance.invokeMethodAsync) {
-//            throttle(() => _dotNetInstance.invokeMethodAsync('TriggerCompileAsync'), 1000, 'compile');
-//        }
-//    }
-//}
 
-function throttle(func, timeFrame, id) {
-    const now = new Date();
-    if (now - throttleLastTimeFuncNameMappings[id] >= timeFrame) {
-        func();
-        throttleLastTimeFuncNameMappings[id] = now;
-    }
-}
-
+// this object is accessible by the .NET JSRuntime
 window.Editor = window.Editor || (function () {
     let _editor;
 
     return {
         create: function (id, value, dotNetInstance) {
-            if (!id) { return; }
-
             _dotNetInstance = dotNetInstance;
-            throttleLastTimeFuncNameMappings['compile'] = new Date();
 
             require(['vs/editor/editor.main'], () => {
+                monaco.languages.register({ id: 'csharp' });
+                // create options
+                // https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor.IStandaloneEditorConstructionOptions.html
                 _editor = monaco.editor.create(document.getElementById(id), {
                     value: value || '',
                     language: 'csharp',
                     theme: 'vs-dark',
                     inlineSuggest: { enabled: true },
                     codeLens: true,
+                    quickSuggestions: false,
                     cursorSmoothCaretAnimation: 'explicit',
                     automaticLayout: false,
                     mouseWheelZoom: true,
@@ -113,6 +155,7 @@ window.Editor = window.Editor || (function () {
                 });
 
                 registerLangugageProvider(_editor);
+                addListeners(_editor);
             });
         },
         getValue: function () {

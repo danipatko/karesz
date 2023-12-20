@@ -34,8 +34,20 @@
     [JSInvokable]
     public async Task<IEnumerable<object>> getCompletionItems(string code, int offset)
     {
-        var result = await LanguageProvider.GetCompletionItems(code, offset);
-        // Console.WriteLine(string.Join("\n", result));
+        var result = await CompletionProvider.GetCompletionItems(code, offset);
+        return result.Select(x => (object)x);
+    }
+
+    [JSInvokable]
+    public async Task<object?> getHoverinfo(int offset)
+    {
+        return (object?)(await HoverinfoProvider.GetHoverinfo(offset));
+    }
+
+    [JSInvokable]
+    public async Task<IEnumerable<object>> getDiagnostics(string code)
+    {
+        var result = await DiagnosticsProvider.GetDiagnostics(code); 
         return result.Select(x => (object)x);
     }
 }

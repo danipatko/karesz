@@ -2,7 +2,6 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.CodeAnalysis.Emit;
-using System.Reflection;
 
 namespace karesz.Runner
 {
@@ -26,51 +25,63 @@ namespace karesz.Runner
                         new KeyValuePair<string, ReportDiagnostic>("CS1702", ReportDiagnostic.Suppress),
                     });
 
-        private static readonly BindingFlags bindingFlags = BindingFlags.InvokeMethod | BindingFlags.Public | BindingFlags.Static | BindingFlags.IgnoreCase | BindingFlags.NonPublic | BindingFlags.InvokeMethod;
+        // private static readonly BindingFlags bindingFlags = BindingFlags.InvokeMethod | BindingFlags.Public | BindingFlags.Static | BindingFlags.IgnoreCase | BindingFlags.NonPublic | BindingFlags.InvokeMethod;
 
         public static async Task InitAsync(List<PortableExecutableReference> basicReferenceAssemblies)
         {
             BaseCompilation = CSharpCompilation.Create(DefaultRootNamespace, Array.Empty<SyntaxTree>(), basicReferenceAssemblies, compilationOptions);
             CSharpParseOptions = new CSharpParseOptions(LanguageVersion.Preview);
+            // launch base compile on startup to speed up things a bit
+            await Compile(WorkspaceService.DEFAULT_TEMPLATE);
         }
 
-        public static async Task Compile(string code) => await Task.Run(() =>
+        /// <summary>
+        /// Updates WorkspaceService.Code, and compiles code.
+        /// If successful, saves assembly binary to AssemblyBytes, which can be loaded runtime.
+        /// </summary>
+        public static async Task<EmitResult> Compile(string code) => await Task.Run(() =>
         {
-            var sourceCode = SourceText.From(code);
-            var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
+            WorkspaceService.Code = code;
+
+            var syntaxTree = CSharpSyntaxTree.ParseText(SourceText.From(code));
             var compilation = BaseCompilation.AddSyntaxTrees(syntaxTree);
 
             MemoryStream ms = new();
             EmitResult result = compilation.Emit(ms);
 
-            ms.Seek(0, SeekOrigin.Begin);
-            AssemblyBytes = ms.ToArray();
-
-            if (!result.Success)
+            if(result.Success)
             {
-                Console.WriteLine("BUILD FAILED");
-                var failures = result.Diagnostics.Where(diagnostic => diagnostic.IsWarningAsError || diagnostic.Severity == DiagnosticSeverity.Error);
-                foreach (Diagnostic diagnostic in failures)
-                {
-                    var startLinePos = diagnostic.Location.GetLineSpan().StartLinePosition;
-                    var err = $"{diagnostic.Severity} on line {startLinePos.Line}:{startLinePos.Character} [{diagnostic.Id}]: {diagnostic.GetMessage()}";
-                    Console.Error.WriteLine(err);
-                }
+                ms.Seek(0, SeekOrigin.Begin);
+                AssemblyBytes = ms.ToArray();
             }
-            else
-            {
-                var assembly = Assembly.Load(AssemblyBytes);
-                Console.WriteLine(string.Join(", ", assembly.GetTypes().Select(x => x.FullName)));
 
-                Type type = assembly.GetType("MyApp.Program")!;
-                // create an instance
-                object obj = Activator.CreateInstance(type);
-                // call our test function
-                var res = (string)type.InvokeMember("Main", bindingFlags, null, obj, new object[] { "Hello World" })!;
-
-                // await Console.Out.WriteLineAsync(">> " + res?.ToString() ?? "raah");
-            }
+            return result;
         });
+
+        //if (!result.Success)
+        //{
+        //    Console.WriteLine("BUILD FAILED");
+        //    var failures = result.Diagnostics.Where(diagnostic => diagnostic.IsWarningAsError || diagnostic.Severity == DiagnosticSeverity.Error);
+        //    foreach (Diagnostic diagnostic in failures)
+        //    {
+        //        var startLinePos = diagnostic.Location.GetLineSpan().StartLinePosition;
+        //        var err = $"{diagnostic.Severity} on line {startLinePos.Line}:{startLinePos.Character} [{diagnostic.Id}]: {diagnostic.GetMessage()}";
+        //        Console.Error.WriteLine(err);
+        //    }
+        //}
+        //else
+        //{
+        //    var assembly = Assembly.Load(AssemblyBytes);
+        //    Console.WriteLine(string.Join(", ", assembly.GetTypes().Select(x => x.FullName)));
+
+        //    Type type = assembly.GetType("MyApp.Program")!;
+        //    // create an instance
+        //    object obj = Activator.CreateInstance(type);
+        //    // call our test function
+        //    var res = (string)type.InvokeMember("Main", bindingFlags, null, obj, new object[] { "Hello World" })!;
+
+        //    // await Console.Out.WriteLineAsync(">> " + res?.ToString() ?? "raah");
+        //}
         
         public static void EpicTestFunction()
         {
