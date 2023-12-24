@@ -3,7 +3,7 @@
 
 <PageTitle>karesz</PageTitle>
 
-<FluentSplitter Orientation="Orientation.Horizontal" Panel1Size="70%" BarSize="6" Panel1MinSize="70%" Panel2MinSize="10px">
+<FluentSplitter Orientation="Orientation.Horizontal" Panel1Size="70%" BarSize="6" Panel2MinSize="10px">
     <Panel1>
         <Editor />
     </Panel1>
@@ -20,20 +20,12 @@
     </Panel2>
 </FluentSplitter>
 
-<button onclick="@run">Compile And Run</button>
+<button onclick="@Run">Compile And Run</button> 
 
 @code {
-    [Inject] public CompilerSerivce CompilerService { get; set; }
-
-    async Task run()
+    async Task Run()
     {
-        try
-        {
-            await CompilerSerivce.Compile(WorkspaceService.Code);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"FAILED\n{ex.Message}");
-        }
+        Game.Run();
+
     }
 }

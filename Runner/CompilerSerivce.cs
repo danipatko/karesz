@@ -2,6 +2,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.CodeAnalysis.Emit;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace karesz.Runner
 {
@@ -25,6 +26,9 @@ namespace karesz.Runner
                         new KeyValuePair<string, ReportDiagnostic>("CS1702", ReportDiagnostic.Suppress),
                     });
 
+        public static event EventHandler? CompileStarted;
+        public static event EventHandler? CompileFinished;
+
         // private static readonly BindingFlags bindingFlags = BindingFlags.InvokeMethod | BindingFlags.Public | BindingFlags.Static | BindingFlags.IgnoreCase | BindingFlags.NonPublic | BindingFlags.InvokeMethod;
 
         public static async Task InitAsync(List<PortableExecutableReference> basicReferenceAssemblies)
@@ -39,8 +43,9 @@ namespace karesz.Runner
         /// Updates WorkspaceService.Code, and compiles code.
         /// If successful, saves assembly binary to AssemblyBytes, which can be loaded runtime.
         /// </summary>
-        public static async Task<EmitResult> Compile(string code) => await Task.Run(() =>
+        public static async Task<EmitResult> Compile(string code) => await Task.Run(async () =>
         {
+            CompileStarted?.Invoke(null, EventArgs.Empty);
             WorkspaceService.Code = code;
 
             var syntaxTree = CSharpSyntaxTree.ParseText(SourceText.From(code));
@@ -55,6 +60,9 @@ namespace karesz.Runner
                 AssemblyBytes = ms.ToArray();
             }
 
+            // Thread.Sleep(1000);
+
+            CompileFinished?.Invoke(null, EventArgs.Empty);
             return result;
         });
 

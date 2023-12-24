@@ -1,0 +1,45 @@
+﻿.editor {
+    --issue-display-height: 32px;
+    --statusbar-height: 24px;
+
+    position: relative;
+}
+
+.editor-container {
+    height: calc(100vh - var(--statusbar-height));
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.output-window {
+    position: absolute;
+    left: 0;
+    bottom: var(--statusbar-height);
+    width: 100%;
+    z-index: 50;
+    overflow-x: hidden;
+}
+
+.output-window > div {
+    font-family: monospace;
+    height: var(--issue-display-height);
+    background-color: var(--error);
+    padding: 0.5rem 1rem;
+    white-space: pre;
+}
+
+.editor-statusbar {
+    background-color: var(--accent-base-color); /* vscode blue */
+    height: var(--statusbar-height);
+    width: 100%;
+    padding: 0 1rem;
+}
+
+.editor-statusbar.compiling {
+    background-color: var(--presence-away);
+}
+
+.editor-statusbar.haserror {
+    background-color: var(--error);
+}

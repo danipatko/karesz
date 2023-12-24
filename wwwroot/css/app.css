@@ -81,9 +81,3 @@ html, body {
 code {
     color: #c02d76;
 }
-
-.editor-container {
-    height: calc(100vh - 54px);
-    position: relative;
-}
-

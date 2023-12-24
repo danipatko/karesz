@@ -148,7 +148,7 @@ window.Editor = window.Editor || (function () {
                     codeLens: true,
                     quickSuggestions: false,
                     cursorSmoothCaretAnimation: 'explicit',
-                    automaticLayout: false,
+                    automaticLayout: true,
                     mouseWheelZoom: true,
                     bracketPairColorization: { enabled: true },
                     minimap: { enabled: true }

@@ -1,6 +1,21 @@
-﻿@using Microsoft.JSInterop
+﻿@using Microsoft.JSInterop;
 
-<div class="editor-container" id="@EditorId"></div>
+<div class="editor" >
+    <div class="editor-nav"></div>
+
+    <div class="editor-container" id="@EditorId"></div>
+
+    <div class="editor-statusbar @(IsCompiling ? "compiling" : string.Empty) @(HasIssues ? "haserror" : string.Empty)">
+        @if(IsCompiling)
+        {
+            <span>Compiling...</span>
+        }
+        else if (HasIssues)
+        {
+            <span>@(Issues.Count()) issues</span>
+        } 
+    </div>
+</div>
 
 @code {
     private DotNetObjectReference<Editor>? dotnetObjRef;
@@ -13,6 +28,12 @@
 
     [Parameter]
     public string EditorId { get; set; } = "monaco-editor";
+
+    public bool IsCompiling { get; set; } = false;
+
+    public bool HasIssues { get => Issues.Any(); }
+
+    public IEnumerable<DiagnosticsProvider.Issue> Issues { get; set; } = [];
 
     protected override void OnAfterRender(bool firstRender)
     {
@@ -47,7 +68,14 @@
     [JSInvokable]
     public async Task<IEnumerable<object>> getDiagnostics(string code)
     {
-        var result = await DiagnosticsProvider.GetDiagnostics(code); 
-        return result.Select(x => (object)x);
+        IsCompiling = true; 
+        StateHasChanged();
+
+        Issues = await DiagnosticsProvider.GetDiagnostics(code);
+
+        IsCompiling = false;
+        StateHasChanged();
+
+        return Issues.Select(x => (object)x);
     }
 }

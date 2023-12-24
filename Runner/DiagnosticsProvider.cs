@@ -10,6 +10,10 @@
 			public int StartColumn { get; set; }
             public int EndLineNumber { get; set; }
             public int EndColumn { get; set; }
+            public override string ToString()
+            {
+                return $"Line {StartLineNumber}, Column {StartColumn}: {Message}";
+            }
         }
 
         /// <summary>
