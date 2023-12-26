@@ -1,4 +1,4 @@
-require.config({ paths: { 'vs': 'lib/monaco-editor/min/vs' } });
+require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
 
 let _dotNetInstance;
 const COMPILE_TIMEFRAME = 500; // ms
@@ -125,8 +125,6 @@ function registerLangugageProvider(_editor) {
         }
     });
 }
-
-
 
 // this object is accessible by the .NET JSRuntime
 window.Editor = window.Editor || (function () {

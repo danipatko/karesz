@@ -6,8 +6,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
     <WasmEnableWebcil>false</WasmEnableWebcil>
-    <WasmEnableThreads>true</WasmEnableThreads>
-    <MonoWasmBuildVariant>multithread</MonoWasmBuildVariant>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,7 +17,6 @@
     <PackageReference Include="Microsoft.CodeAnalysis.Features" Version="4.8.0" />
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" Version="4.2.0" />
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="4.2.0" />
-    <PackageReference Include="Microsoft.NET.WebAssembly.Threading" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>
