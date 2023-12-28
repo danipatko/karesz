@@ -101,5 +101,8 @@
             // turn left or right -> adjust rotation only
             _ => new(p.Vector, Rotate(p.Rotation, relativeDirection))
         };
+
+        public readonly override string ToString() => $"position:{Vector} rotation:{Rotation}";
+
     }
 }

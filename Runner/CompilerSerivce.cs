@@ -13,7 +13,8 @@ namespace karesz.Runner
         private static CSharpCompilation BaseCompilation;
         private static CSharpParseOptions CSharpParseOptions;
 
-        private static byte[] AssemblyBytes = [];
+        public static byte[] AssemblyBytes { get; private set; } = [];
+        public static bool HasSuccessfulCompilation = false;
 
         private static readonly CSharpCompilationOptions compilationOptions = new(
                     OutputKind.DynamicallyLinkedLibrary,
@@ -59,8 +60,6 @@ namespace karesz.Runner
                 ms.Seek(0, SeekOrigin.Begin);
                 AssemblyBytes = ms.ToArray();
             }
-
-            // Thread.Sleep(1000);
 
             CompileFinished?.Invoke(null, EventArgs.Empty);
             return result;

@@ -3,9 +3,13 @@ using Microsoft.VisualStudio.Threading;
 
 namespace karesz.Core
 {
-    public class Robot(string név)
+    public class Robot
     {
         #region Instance Properties
+        private Robot(string név)
+        {
+            Név = név;
+        }
 
         private Position CurrentPosition = new(0, 0);
         private Position ProposedPosition = new(0, 0);
@@ -24,13 +28,14 @@ namespace karesz.Core
             }
         }
 
+
         public Action? Feladat { get; set; } = null;
 
         private bool IsDead { get; set; } = false;
 
         private int[] Stones { get; set; } = [];
 
-        public string Név { get; } = név;
+        public string Név { get; }
 
         // CONSTANTS (for karesz interface)
         public const int fekete = (int)Level.Tile.Black;
@@ -51,13 +56,18 @@ namespace karesz.Core
 
         private static void Tick()
         {
-            Task.Run(async () =>
-            {
-                // this should ensure that our async function runs in an async context
-                await Task.Yield();
-                // block until released
-                await resetEvent.WaitAsync();
-            }).Wait();
+            //Task.Run(async () =>
+            //{
+            //    // this should ensure that our async function runs in an async context
+            //    await Task.Yield();
+            //    // block until released
+            //    await resetEvent.WaitAsync();
+            //}).Wait();
+        }
+
+        public override string ToString()
+        {
+            return $"{Név} at {Position} (Proposed {ProposedPosition})";
         }
 
         #endregion
@@ -112,7 +122,8 @@ namespace karesz.Core
             }
 
             if (Stones[szín - 2] <= 0)
-            {
+            {   
+                // TODO: nameof probably doesn't work like that
                 Say($"Nem tudom a kavicsot lerakni, mert nincs {nameof(szín)} színű kavicsom!");
                 return;
             }
@@ -212,17 +223,28 @@ namespace karesz.Core
 
         // public void Mondd(string ezt) => MessageBox.Show(Név + ": " + ezt);
 
-        public void Lőjj() => Projectile.Shoot(CurrentPosition + RelativeDirection.Forward, this);
+        public void Lőjj()
+        {
+            Projectile.Shoot(CurrentPosition + RelativeDirection.Forward, this);
+            Tick();
+        }
 
         #endregion
 
         #region Static Props
+        public static Robot Create(string név)
+        {
+            var r = new Robot(név);
+            Robots.Add(név, r);
+            return r;
+        }
+
         private static int TickCount = 0;
 
         // used for signalling & waiting
         private static readonly AsyncManualResetEvent resetEvent = new (false);
 
-        private static readonly Dictionary<string, Robot> Robots = new();
+        private static readonly Dictionary<string, Robot> Robots = [];
 
         private static readonly Level CurrentLevel = Level.Default;
 
@@ -232,7 +254,7 @@ namespace karesz.Core
 
         private static bool IsPositionOccupied(Vector position) => Robots.Any(x => x.Value.CurrentPosition.Vector == position);
 
-        private static void MakeRound()
+        public static void MakeRound()
         {
             // move projectiles
             Projectile.TickAll();
@@ -243,7 +265,7 @@ namespace karesz.Core
 
             // step survivors
             foreach (Robot robot in Robots.Values)
-                robot.CurrentPosition = robot.Position;
+                robot.CurrentPosition = robot.ProposedPosition;
 
             TickCount++;
         }
