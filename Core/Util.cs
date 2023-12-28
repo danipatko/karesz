@@ -17,13 +17,17 @@
         public int x = x;
         public int y = y;
 
-        public static Vector operator +(Vector a, Vector b) => new(a.x + b.x, a.y + a.y);
+        // operator overrides
+        public static Vector operator +(Vector a, Vector b) => new(a.x + b.x, a.y + b.y);
+
+        public static bool operator ==(Vector a, Vector b) => a.x == b.x && a.y == b.y;
+        public static bool operator !=(Vector a, Vector b) => a.x != b.x || a.y != b.y;
 
         public static Vector Normalize(Direction direction) => direction switch
         {
-            Direction.Up => new(0, -1),
+            Direction.Up => new(0, 1),
             Direction.Right => new(1, 0),
-            Direction.Down => new(0, 1),
+            Direction.Down => new(0, -1),
             Direction.Left => new(-1, 0),
             _ => throw new Exception("Undefined direction.") // should never happen
         };
@@ -38,10 +42,29 @@
         public readonly Vector Clamp(int maxX, int maxY, int minX = 0, int minY = 0) => 
             new(Clamp(minX, maxX, x), Clamp(minY, maxY, y));
 
-        public static bool InBounds(Vector v, int maxX, int maxY, int minX = 0, int minY = 0) => 
-            v.x >= minX && v.y >= minY && v.x <= maxX && v.y <= maxY;
+        public static bool InBounds(Vector v, int maxX, int maxY, int minX = 0, int minY = 0) => InBounds(v.x, v.y, maxX, maxY, minX, minY);
 
-        public static Vector Null = new(0, 0);
+        public static bool InBounds(int x, int y, int maxX, int maxY, int minX = 0, int minY = 0) =>
+            x >= minX && y >= minY && x <= maxX && y <= maxY;
+
+        public readonly static Vector Null = new(0, 0);
+
+        #region Overrides
+
+        public override readonly string ToString() => $"({x}, {y})";
+
+        public readonly override int GetHashCode() => (x << 2) ^ y;
+
+        public readonly override bool Equals(object? obj)
+        {
+            if ((obj == null) || !this.GetType().Equals(obj.GetType()))
+                return false;
+
+            var p = (Vector)obj;
+            return (x == p.x) && (y == p.y);
+        }
+
+        #endregion
     }
 
     public struct Position
@@ -64,7 +87,7 @@
         // % operator for negative numbers aswell
         private static int Mod(int a, int b) => ((a % b) + b) % b;
 
-        // Rotates absolute direction by relative direction
+        // Rotates absolute direction by relative direction (forward takes no effect)
         private static Direction Rotate(Direction direction, RelativeDirection rotateBy) => (Direction)Mod((int)direction + (int)rotateBy, 4);
 
         // Moves current position towards absolute direction (keeps rotation)

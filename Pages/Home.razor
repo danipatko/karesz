@@ -23,8 +23,11 @@
 <button onclick="@Run">Compile And Run</button> 
 
 @code {
+    [Inject] public HttpClient HttpClient { get; set; }
+
     async Task Run()
     {
-        Game.Run();
+        var level = await Level.Load(HttpClient, "v0.txt");
+        Console.WriteLine(level!.ToHeatString());
     }
 }
