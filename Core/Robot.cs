@@ -1,8 +1,9 @@
 ﻿using System.Collections.Concurrent;
+using Microsoft.VisualStudio.Threading;
 
 namespace karesz.Core
 {
-    public class Robot
+    public class Robot(string név)
     {
         #region Instance Properties
 
@@ -14,21 +15,22 @@ namespace karesz.Core
             get => CurrentPosition;
             set
             {
-                // throw exception if coordinate is out of bounds
-                if (!CurrentLevel.InBounds(value.Vector))
-                    throw new Exception($"Érvénytelen lépés! A megadott pozició {value.Vector} kívül esik a pályán (szélesség: {CurrentLevel.Width}, magasság: {CurrentLevel.Height})!");
+                // TODO: maybe add a friendly mode to warn user?
+                //if (!CurrentLevel.InBounds(value.Vector))
+                //    throw new Exception($"Érvénytelen lépés! A megadott pozició {value.Vector} kívül esik a pályán (szélesség: {CurrentLevel.Width}, magasság: {CurrentLevel.Height})!");
+
                 // CurrentPosition will be updated to this after the next tick
                 ProposedPosition = value;
             }
         }
 
-        public Action Feladat { get; set; }
+        public Action? Feladat { get; set; } = null;
 
         private bool IsDead { get; set; } = false;
 
-        public int[] Stones { get; set; } = [];
+        private int[] Stones { get; set; } = [];
 
-        public string Név { get; private set; }
+        public string Név { get; } = név;
 
         // CONSTANTS (for karesz interface)
         public const int fekete = (int)Level.Tile.Black;
@@ -47,9 +49,15 @@ namespace karesz.Core
             // TODO: create event so message can be shown in frontent aswell
         }
 
-        private void Tick()
+        private static void Tick()
         {
-            // TODO: signal thread here or ??
+            Task.Run(async () =>
+            {
+                // this should ensure that our async function runs in an async context
+                await Task.Yield();
+                // block until released
+                await resetEvent.WaitAsync();
+            }).Wait();
         }
 
         #endregion
@@ -198,12 +206,23 @@ namespace karesz.Core
 
         public int Hőmérő() => CurrentLevel.GetHeat(Position.Vector);
 
+        #pragma warning disable CA1822 // Mark members as static
+        public void Várj() => Tick();
+        #pragma warning restore CA1822
+
+        // public void Mondd(string ezt) => MessageBox.Show(Név + ": " + ezt);
+
+        public void Lőjj() => Projectile.Shoot(CurrentPosition + RelativeDirection.Forward, this);
+
         #endregion
 
         #region Static Props
+        private static int TickCount = 0;
 
-        // use concurrent data types for multithreading
-        private static readonly ConcurrentDictionary<string, Robot> Robots = new();
+        // used for signalling & waiting
+        private static readonly AsyncManualResetEvent resetEvent = new (false);
+
+        private static readonly Dictionary<string, Robot> Robots = new();
 
         private static readonly Level CurrentLevel = Level.Default;
 
@@ -212,6 +231,65 @@ namespace karesz.Core
         public static Robot Get(string név) => Robots[név]!;
 
         private static bool IsPositionOccupied(Vector position) => Robots.Any(x => x.Value.CurrentPosition.Vector == position);
+
+        private static void MakeRound()
+        {
+            // move projectiles
+            Projectile.TickAll();
+
+            // remove killed robots
+            foreach (string name in RobotsToExecute().Distinct())
+                Kill(name);
+
+            // step survivors
+            foreach (Robot robot in Robots.Values)
+                robot.CurrentPosition = robot.Position;
+
+            TickCount++;
+        }
+
+        private static void Kill(string name)
+        {
+            if (Robots.Remove(name, out var robot))
+                CurrentLevel[robot.Position.Vector] = Level.Tile.Black;
+        }
+
+        private static IEnumerable<string> RobotsToExecute()
+        {
+            foreach (var robot in Robots.Values)
+            {
+                // steps into wall
+                if (CurrentLevel[robot.ProposedPosition.Vector] == Level.Tile.Wall)
+                    yield return robot.Név;
+                // out of bounds
+                if (!CurrentLevel.InBounds(robot.ProposedPosition.Vector))
+                    yield return robot.Név;
+                // stepping on the same field
+                if (Robots.Values.Any(other => other.Név != robot.Név && robot.ProposedPosition.Vector == other.ProposedPosition.Vector))
+                    yield return robot.Név;
+                // stepping over one another
+                if (Robots.Values.Any(other => other.Név != robot.Név && robot.ProposedPosition.Vector == other.Position.Vector && other.ProposedPosition.Vector == robot.Position.Vector))
+                    yield return robot.Név;
+                // hit by projectile
+                if (Projectile.Projectiles.Any(x => x.CurrentPosition.Vector == robot.ProposedPosition.Vector))
+                    yield return robot.Név;
+            }
+        }
+
+        public static async Task RunAsync(CancellationToken cancellationToken)
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                // block Tick() calls again
+                resetEvent.Reset();
+                // time for robot tasks to block again
+                await Task.Delay(100, cancellationToken);
+                // run multiplayer logic
+                MakeRound();
+                // unblock Tick() calls
+                resetEvent.Set();
+            }
+        }
 
         #endregion
     }

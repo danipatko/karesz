@@ -27,7 +27,8 @@
 
     async Task Run()
     {
-        var level = await Level.Load(HttpClient, "v0.txt");
-        Console.WriteLine(level!.ToHeatString());
+        // var level = await Level.Load(HttpClient, "v0.txt");
+        // Console.WriteLine(level!.ToHeatString());
+        Game.Run();
     }
 }
