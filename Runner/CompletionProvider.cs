@@ -26,7 +26,7 @@ namespace karesz.Runner
 
         public static async Task<IEnumerable<Suggestion>> GetCompletionItems(string code, int offset)
         {
-            WorkspaceService.Code = code;
+            WorkspaceService.SetCode(code);
 
             CompletionService ??= CompletionService.GetService(WorkspaceService.Document);
             if (CompletionService == null) return []; // should not be possible

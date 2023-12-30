@@ -9,12 +9,19 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+var httpClient = new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) };
+builder.Services.AddScoped(_ => httpClient);
 builder.Services.AddFluentUIComponents();
 
-builder.Services.AddSingleton<WorkspaceService>();
-builder.Services.AddSingleton<CompilerSerivce>();
+builder.Services
+    .AddSingleton<WorkspaceService>()
+    .AddSingleton<CompilerSerivce>()
+    .AddSingleton(sp => (IJSInProcessRuntime)sp.GetRequiredService<IJSRuntime>());
 
-builder.Services.AddSingleton(sp => (IJSInProcessRuntime)sp.GetRequiredService<IJSRuntime>());
+_ = Task.Run(async () =>
+{
+    await WorkspaceService.InitAsync(httpClient);
+    await CompilerSerivce.InitAsync(WorkspaceService.BasicReferenceAssemblies);
+});
 
 await builder.Build().RunAsync();

@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Host.Mef;
 using System.Collections.Concurrent;
 using System.Reflection;
-using Microsoft.CodeAnalysis.Completion;
+using karesz.Core;
 
 namespace karesz.Runner
 {
@@ -15,31 +15,34 @@ namespace karesz.Runner
         public static Project Project { get; private set; }
 
         private static string _code = string.Empty;
-        public static string Code
+
+        public static string Code { get => _code; }
+
+        public static string SetCode(string code)
         {
-            get => _code;
-            set
-            {
-                Document = Document.WithText(SourceText.From(value));
-                _code = value;
-            }
+            // _code = Preprocess.TransformSource(code);
+            // Console.WriteLine(_code);
+            _code = code;
+            Document = Document.WithText(SourceText.From(_code));
+            return _code;
         }
 
         // Edit allowed references here
         static readonly Assembly[] basicReferenceAssemblyRoots =
-            {
-                typeof(CompletionService).Assembly,
+            [
+                typeof(Task).Assembly,  // System.Threading.Tasks
                 typeof(Console).Assembly, // System.Console
                 typeof(IQueryable).Assembly, // System.Linq.Expressions
-                typeof(Thread).Assembly, // System.Threading
                 // typeof(object).Assembly, // everything?!
-                typeof(CompilerSerivce).Assembly // swap to karesz engine
-            };
+                typeof(Robot).Assembly,
+                typeof(Karesz.Form).Assembly,
+                typeof(Karesz.Form1).Assembly,
+            ];
 
         public static async Task InitAsync(HttpClient httpClient)
         {
             // load assemblies
-            await GetReferences(httpClient);
+            await GetReferencesAsync(httpClient);
             // create 'virutal' project (needed for autocomplete services)
             var projectInfo = ProjectInfo
                 .Create(ProjectId.CreateNewId(), VersionStamp.Create(), PROJECT_NAME, PROJECT_NAME, LanguageNames.CSharp)
@@ -49,10 +52,10 @@ namespace karesz.Runner
             // document is the snippet edited by the user
             // only a single document is used (as Diak.cs)
             Document = Workspace.AddDocument(Project.Id, DEFAULT_DOCUMENT_NAME, SourceText.From(DEFAULT_TEMPLATE));
-            Code = DEFAULT_TEMPLATE;
+            SetCode(DEFAULT_TEMPLATE);
         }
 
-        private static async Task GetReferences(HttpClient httpClient)
+        private static async Task GetReferencesAsync(HttpClient httpClient)
         {
             var assemblyNames = basicReferenceAssemblyRoots
                 .SelectMany(assembly => assembly.GetReferencedAssemblies().Concat(new[] { assembly.GetName() }))
@@ -91,22 +94,20 @@ namespace karesz.Runner
         public const string PROJECT_NAME = "Karesz";
         public const string DEFAULT_DOCUMENT_NAME = "Diak.cs";
         public const string DEFAULT_TEMPLATE = @"using System;
-using karesz.Runner;
 
-namespace MyApp
+namespace Karesz
 {
-    class Program
+    using karesz.Core;
+    
+    public partial class Form1 : Form
     {
-        static int Count { get; set; } = 0;
-
-        static void Main(string args)
+        public override void DIÁK_ROBOTJAI()
         {
-            Console.WriteLine(""Hello World!"");
+            var karesz = Robot.Get(""karesz"");
 
-            var cs = new CompilerSerivce();
-            Console.WriteLine(cs.ToString());
-
-            CompilerSerivce.EpicTestFunction();
+            karesz.Feladat = delegate () {
+                while(true) karesz.Lépj();
+            };
         }
     }
 }

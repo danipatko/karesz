@@ -3,13 +3,3 @@
 <FluentDesignTheme Mode="DesignThemeModes.System" OfficeColor="OfficeColor.PowerPoint" StorageName="theme" />
 
 @Body
-
-@code {
-    [Inject] public HttpClient HttpClient { get; set; }
-
-    protected override async Task OnInitializedAsync()
-    {
-        await WorkspaceService.InitAsync(HttpClient);
-        await CompilerSerivce.InitAsync(WorkspaceService.BasicReferenceAssemblies);
-    }
-}

@@ -49,7 +49,7 @@
     [JSInvokable]
     public void updateCode(string code)
     {
-        WorkspaceService.Code = code;
+        WorkspaceService.SetCode(code);
     }
 
     [JSInvokable]
@@ -71,10 +71,12 @@
         IsCompiling = true; 
         StateHasChanged();
 
-        Issues = await DiagnosticsProvider.GetDiagnostics(code);
+        Issues = await DiagnosticsProvider.GetDiagnosticsAsync(code);
 
         IsCompiling = false;
         StateHasChanged();
+
+        Preprocess.Asyncronize(code);
 
         return Issues.Select(x => (object)x);
     }

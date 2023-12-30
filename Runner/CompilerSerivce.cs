@@ -37,17 +37,19 @@ namespace karesz.Runner
             BaseCompilation = CSharpCompilation.Create(DefaultRootNamespace, Array.Empty<SyntaxTree>(), basicReferenceAssemblies, compilationOptions);
             CSharpParseOptions = new CSharpParseOptions(LanguageVersion.Preview);
             // launch base compile on startup to speed up things a bit
-            await Compile(WorkspaceService.DEFAULT_TEMPLATE);
+            await CompileAsync(WorkspaceService.DEFAULT_TEMPLATE);
         }
 
         /// <summary>
         /// Updates WorkspaceService.Code, and compiles code.
         /// If successful, saves assembly binary to AssemblyBytes, which can be loaded runtime.
         /// </summary>
-        public static async Task<EmitResult> Compile(string code) => await Task.Run(async () =>
+        public static async Task<EmitResult> CompileAsync(string code)
         {
+            await Task.Yield();
+
             CompileStarted?.Invoke(null, EventArgs.Empty);
-            WorkspaceService.Code = code;
+            code = WorkspaceService.SetCode(code);
 
             var syntaxTree = CSharpSyntaxTree.ParseText(SourceText.From(code));
             var compilation = BaseCompilation.AddSyntaxTrees(syntaxTree);
@@ -63,7 +65,7 @@ namespace karesz.Runner
 
             CompileFinished?.Invoke(null, EventArgs.Empty);
             return result;
-        });
+        }
 
         //if (!result.Success)
         //{

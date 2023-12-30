@@ -19,9 +19,9 @@
         /// <summary>
         /// Starts a compilation and returns an array of issues. Issue is json serializable and compatible with monaco's API.
         /// </summary>
-        public static async Task<IEnumerable<Issue>> GetDiagnostics(string code)
+        public static async Task<IEnumerable<Issue>> GetDiagnosticsAsync(string code)
         {
-            var results = await CompilerSerivce.Compile(code);
+            var results = await CompilerSerivce.CompileAsync(code);
             if (results.Success) return [];
 
             var issues = new Issue[results.Diagnostics.Length];
@@ -36,7 +36,7 @@
                     StartLineNumber = linespan.StartLinePosition.Line + 1, // offset needed for whatever reason
                     EndLineNumber = linespan.EndLinePosition.Line + 1,
                     StartColumn = linespan.StartLinePosition.Character + 1,
-                    EndColumn = linespan.EndLinePosition.Character,
+                    EndColumn = linespan.EndLinePosition.Character + 1,
                 };
             }
 
