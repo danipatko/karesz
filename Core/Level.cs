@@ -107,7 +107,7 @@ namespace karesz.Core
 
         private static readonly Dictionary<string, Level> CachedLevels = [];
 
-        public static async Task<Level?> Load(HttpClient httpClient, string levelName)
+        public static async Task<Level?> LoadAsync(HttpClient httpClient, string levelName)
         {
             // use cache if available
             if(CachedLevels.TryGetValue(levelName, out var level))
@@ -120,6 +120,8 @@ namespace karesz.Core
 
                 var parsed = Parse(levelName, levelContent);
                 CachedLevels.Add(levelName, parsed);
+
+                Robot.CurrentLevel = parsed;
 
                 return parsed;
             }

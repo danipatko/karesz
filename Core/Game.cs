@@ -1,4 +1,5 @@
-﻿using Microsoft.VisualStudio.Threading;
+﻿using karesz.Runner;
+using Microsoft.VisualStudio.Threading;
 
 namespace karesz.Core
 {
@@ -6,16 +7,21 @@ namespace karesz.Core
     {
         public static async Task Run()
         {
-            var karesz = Robot.Create("karesz");
-            karesz.Feladat = async delegate ()
-            {
-                while (true)
-                {
-                    for (var i = 0; i < 3; i++)
-                        await karesz.LépjAsync();
-                    await karesz.ForduljAsync(1);
-                } 
-            };
+            await CompilerSerivce.CompileAsync(WorkspaceService.Code, CompilerSerivce.CompilationMode.Async);
+            CompilerSerivce.LoadAndInvoke();
+
+            //var karesz = Robot.Create("karesz");
+            //karesz.Feladat = async delegate ()
+            //{
+            //    while (true)
+            //    {
+            //        for (var i = 0; i < 3; i++)
+            //            await karesz.LépjAsync();
+            //        await karesz.ForduljAsync(1);
+            //    }
+            //};
+
+            return;
 
             var cts = new CancellationTokenSource();
 
@@ -25,7 +31,8 @@ namespace karesz.Core
             await Console.Out.WriteLineAsync("cancelling now");
             await cts.CancelAsync();
 
-            // proof of concept
+            #region proof of concept
+
             //Console.WriteLine("thread {0} has been called", Thread.CurrentThread.ManagedThreadId);
 
             //var resetEvent = new AsyncManualResetEvent(false);
@@ -55,12 +62,13 @@ namespace karesz.Core
             //for (int i = 0; i < 3; i++)
             //{
             //    Console.WriteLine("--- waiting a sec");
-                
+
             //    await Task.Delay(1000);
             //    resetEvent.PulseAll();
 
             //    Console.WriteLine("--- reset");
             //}
+            #endregion
         }
     }
 
@@ -83,7 +91,7 @@ namespace karesz.Core
 
         private static readonly Dictionary<string, Robot> Robots = [];
 
-        private static readonly Level CurrentLevel = Level.Default;
+        public static Level CurrentLevel { get; set; } = Level.Default;
 
         // throws an exception if name is not present in dictionary
         public static Robot Get(string név) => Robots[név]!;
@@ -135,6 +143,7 @@ namespace karesz.Core
 
         public static async Task RunAsync(CancellationToken cancellationToken)
         {
+            await Console.Out.WriteLineAsync(string.Join(", ", Robots.Values));
             foreach (var robot in Robots.Values)
             {
                 _ = Task.Run(robot.Feladat.Invoke, cancellationToken);

@@ -20,15 +20,16 @@
     </Panel2>
 </FluentSplitter>
 
-<button onclick="@Run">Compile And Run</button> 
+<button onclick=@Run>Compile And Run</button> 
 
 @code {
     [Inject] public HttpClient HttpClient { get; set; }
 
     async Task Run()
     {
-        // var level = await Level.Load(HttpClient, "v0.txt");
+        // var level = await Level.LoadAsync(HttpClient, "v0.txt");
         // Console.WriteLine(level!.ToHeatString());
-        Game.Run();
+
+        await Game.Run();
     }
 }

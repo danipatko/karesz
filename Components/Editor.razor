@@ -49,20 +49,20 @@
     [JSInvokable]
     public void updateCode(string code)
     {
-        WorkspaceService.SetCode(code);
+        WorkspaceService.Code = code;
     }
 
     [JSInvokable]
     public async Task<IEnumerable<object>> getCompletionItems(string code, int offset)
     {
-        var result = await CompletionProvider.GetCompletionItems(code, offset);
+        var result = await CompletionProvider.GetCompletionItemsAsync(code, offset);
         return result.Select(x => (object)x);
     }
 
     [JSInvokable]
     public async Task<object?> getHoverinfo(int offset)
     {
-        return (object?)(await HoverinfoProvider.GetHoverinfo(offset));
+        return (object?)(await HoverinfoProvider.GetHoverinfoAsync(offset));
     }
 
     [JSInvokable]
@@ -75,8 +75,6 @@
 
         IsCompiling = false;
         StateHasChanged();
-
-        Preprocess.Asyncronize(code);
 
         return Issues.Select(x => (object)x);
     }

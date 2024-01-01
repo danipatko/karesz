@@ -10,21 +10,23 @@ namespace karesz.Runner
     public class WorkspaceService
     {
         public static readonly AdhocWorkspace Workspace = new(MefHostServices.DefaultHost);
+
+        // can't be assigned in costructor as the loading process is async
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public static List<PortableExecutableReference> BasicReferenceAssemblies;
         public static Document Document { get; private set; }
         public static Project Project { get; private set; }
+#pragma warning restore CS8618
 
         private static string _code = string.Empty;
 
-        public static string Code { get => _code; }
-
-        public static string SetCode(string code)
-        {
-            // _code = Preprocess.TransformSource(code);
-            // Console.WriteLine(_code);
-            _code = code;
-            Document = Document.WithText(SourceText.From(_code));
-            return _code;
+        public static string Code { 
+            set
+            {
+                _code = value;
+                Document = Document.WithText(SourceText.From(value));
+            }    
+            get => _code;
         }
 
         // Edit allowed references here
@@ -34,6 +36,7 @@ namespace karesz.Runner
                 typeof(Console).Assembly, // System.Console
                 typeof(IQueryable).Assembly, // System.Linq.Expressions
                 // typeof(object).Assembly, // everything?!
+                typeof(Game).Assembly,
                 typeof(Robot).Assembly,
                 typeof(Karesz.Form).Assembly,
                 typeof(Karesz.Form1).Assembly,
@@ -52,7 +55,7 @@ namespace karesz.Runner
             // document is the snippet edited by the user
             // only a single document is used (as Diak.cs)
             Document = Workspace.AddDocument(Project.Id, DEFAULT_DOCUMENT_NAME, SourceText.From(DEFAULT_TEMPLATE));
-            SetCode(DEFAULT_TEMPLATE);
+            Code = DEFAULT_TEMPLATE;
         }
 
         private static async Task GetReferencesAsync(HttpClient httpClient)
@@ -91,26 +94,26 @@ namespace karesz.Runner
         }
 
         // CONSTANTS
-        public const string PROJECT_NAME = "Karesz";
+        public const string PROJECT_NAME = nameof(Karesz);
         public const string DEFAULT_DOCUMENT_NAME = "Diak.cs";
-        public const string DEFAULT_TEMPLATE = @"using System;
+        public const string DEFAULT_TEMPLATE = $@"using System;
 
-namespace Karesz
-{
-    using karesz.Core;
+namespace {nameof(Karesz)}
+{{
+    using {nameof(karesz)}.{nameof(Core)};
     
-    public partial class Form1 : Form
-    {
-        public override void DIÁK_ROBOTJAI()
-        {
+    public partial class {nameof(Karesz.Form1)} : {nameof(Karesz.Form)}
+    {{
+        public override void {nameof(Karesz.Form1.DIÁK_ROBOTJAI)}()
+        {{
             var karesz = Robot.Get(""karesz"");
 
-            karesz.Feladat = delegate () {
+            karesz.Feladat = delegate () {{
                 while(true) karesz.Lépj();
-            };
-        }
-    }
-}
+            }};
+        }}
+    }}
+}}
 ";
     }
 }

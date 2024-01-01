@@ -9,7 +9,7 @@ namespace karesz.Runner
         private static CompletionService? CompletionService;
 
         // relevant CompletionItem.Property keys
-        private const string InsertionText = nameof(InsertionText); // same as: "InsertionText"
+        private const string InsertionText = nameof(InsertionText); // same as literal: "InsertionText"
         private const string SymbolKind = nameof(SymbolKind);
         private const string SymbolName = nameof(SymbolName);
         private const string DescriptionProperty = nameof(DescriptionProperty);
@@ -24,9 +24,12 @@ namespace karesz.Runner
             public string Label { get; set; }
         }
 
-        public static async Task<IEnumerable<Suggestion>> GetCompletionItems(string code, int offset)
+        /// <summary>
+        /// Get autocomplete items based on caret position (async functions are omitted for the sake of simplicity)
+        /// </summary>
+        public static async Task<IEnumerable<Suggestion>> GetCompletionItemsAsync(string code, int offset)
         {
-            WorkspaceService.SetCode(code);
+            WorkspaceService.Code = code;
 
             CompletionService ??= CompletionService.GetService(WorkspaceService.Document);
             if (CompletionService == null) return []; // should not be possible
@@ -37,7 +40,7 @@ namespace karesz.Runner
             return suggestedCompletions.ItemsList
                 .Where(ci => string.IsNullOrEmpty(wordToComplete) || ci.FilterText.StartsWith(wordToComplete, StringComparison.OrdinalIgnoreCase))
                 .Select(TryConvertToSuggestion)
-                .Where(x => x != null) as IEnumerable<Suggestion>;
+                .Where(x => x != null && !x.InsertText.Contains("Async")) as IEnumerable<Suggestion>;
         }
 
         [GeneratedRegex(@"^Text\|(?<word>\w+)\sKeyword", RegexOptions.IgnoreCase | RegexOptions.Compiled, "en-150")]

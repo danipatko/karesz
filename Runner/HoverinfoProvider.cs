@@ -16,7 +16,7 @@ namespace karesz.Runner
                 .AddMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier | SymbolDisplayMiscellaneousOptions.IncludeNotNullableReferenceTypeModifier | SymbolDisplayMiscellaneousOptions.AllowDefaultLiteral | SymbolDisplayMiscellaneousOptions.UseSpecialTypes)
                 .AddGenericsOptions(SymbolDisplayGenericsOptions.IncludeTypeParameters | SymbolDisplayGenericsOptions.IncludeTypeConstraints | SymbolDisplayGenericsOptions.IncludeVariance);
 
-        public static async Task<string?> GetHoverinfo(int offset)
+        public static async Task<string?> GetHoverinfoAsync(int offset)
         {
             SemanticModel = await WorkspaceService.Document.GetSemanticModelAsync();
             if (SemanticModel == null) { return null; }
