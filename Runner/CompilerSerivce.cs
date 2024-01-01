@@ -16,9 +16,10 @@ namespace karesz.Runner
             Async = 1
         }
 
-        private static readonly BindingFlags bindingFlags = BindingFlags.InvokeMethod | BindingFlags.Public | BindingFlags.Static | BindingFlags.IgnoreCase | BindingFlags.NonPublic;
+        private const BindingFlags BINDING_FLAGS = BindingFlags.InvokeMethod | BindingFlags.Public | BindingFlags.IgnoreCase | BindingFlags.Instance;
         private const string TARGET_TYPE = $"{nameof(Karesz)}.{nameof(Karesz.Form1)}";
-        private const string TARGET_METHOD = nameof(Karesz.Form1.DIÁK_ROBOTJAI);
+        private const string TARGET_METHOD = Preprocess.DIAK_ROBOTJAI;  // encoding issue
+        private const string DEFAULT_ROOT_NAMESPACE = $"{nameof(karesz)}.{nameof(Runner)}"; // same as this namespace (assembly is loaded here)
 
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         private static CSharpCompilation BaseCompilation;
@@ -44,7 +45,7 @@ namespace karesz.Runner
 
         public static async Task InitAsync(List<PortableExecutableReference> basicReferenceAssemblies)
         {
-            BaseCompilation = CSharpCompilation.Create(nameof(Karesz), Array.Empty<SyntaxTree>(), basicReferenceAssemblies, compilationOptions);
+            BaseCompilation = CSharpCompilation.Create(DEFAULT_ROOT_NAMESPACE, Array.Empty<SyntaxTree>(), basicReferenceAssemblies, compilationOptions);
             CSharpParseOptions = new CSharpParseOptions(LanguageVersion.Preview);
             // launch base compile on startup to speed up things a bit
             await CompileAsync(WorkspaceService.DEFAULT_TEMPLATE);
@@ -67,7 +68,7 @@ namespace karesz.Runner
             MemoryStream ms = new();
             EmitResult result = compilation.Emit(ms);
 
-            if(result.Success)
+            if (result.Success)
             {
                 ms.Seek(0, SeekOrigin.Begin);
                 AssemblyBytes = ms.ToArray();
@@ -79,46 +80,28 @@ namespace karesz.Runner
 
         /// <summary>
         /// Loads the assemby from the last successful compilation and invokes it's entry point
+        /// <returns>true on success</returns>
         /// </summary>
-        public static void LoadAndInvoke()
+        public static bool LoadAndInvoke()
         {
-            if (!HasAssembly) 
-                return;
-
-            Console.WriteLine(TARGET_TYPE);
-            Console.WriteLine(TARGET_METHOD);
-            Console.WriteLine(typeof(Karesz.Form).AssemblyQualifiedName);
-            Console.WriteLine(typeof(Karesz.Form1).AssemblyQualifiedName);
+            if (!HasAssembly)
+                return false;
 
             try
             {
                 var assembly = Assembly.Load(AssemblyBytes);
-                Console.WriteLine("loaded");
-
-                
-                foreach (var item in assembly.ExportedTypes.Select(t => t.FullName))
-                {
-                    Console.WriteLine(item);
-                }
-
-                Console.WriteLine(string.Join("\n", assembly.ExportedTypes.Select(t => t.FullName)));
-                Console.WriteLine("hello");
-                //Console.WriteLine(string.Join("\n", assembly.ExportedTypes.Select(t => t.FullName)));
-
-                return;
-
                 // creates a Karesz.Form1 class instance
-                Type type = assembly.GetType(TARGET_TYPE, true, true)!;
-                Console.WriteLine("got type");
-                object? targetObj = Activator.CreateInstance(type);
-                Console.WriteLine("got instance");
+                var type = assembly.GetType(TARGET_TYPE, true, true)!;
+                var instance = Activator.CreateInstance(type);
                 // invoke DIÁK_ROBOTJAI method
-                type.InvokeMember(TARGET_METHOD, bindingFlags, null, targetObj, []);
+                type.InvokeMember(TARGET_METHOD, BINDING_FLAGS, null, instance, null);
+                return true;
             }
             catch (Exception e)
             {
                 // TODO: add to diagnostics
                 Console.Error.WriteLine("Failed to find entry point.\n{0}", e.Message);
+                return false;
             }
         }
     }

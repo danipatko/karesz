@@ -56,6 +56,8 @@ namespace karesz.Core
 
         #region Karesz API methods
 
+        public Vector H { get => CurrentPosition.Vector; }
+    
         /// <summary>
         /// Elhelyezi a Robotot a megadott helyre.
         /// </summary>
@@ -102,6 +104,11 @@ namespace karesz.Core
             Fordulj(forgásirány);
             await Tick();
         }
+
+        public void Fordulj_jobbra() => Fordulj(1);
+        public void Fordulj_balra() => Fordulj(-1);
+        public async Task Fordulj_jobbraAsync() => await ForduljAsync(1);
+        public async Task Fordulj_balraAsync() => await ForduljAsync(-1);
 
         /// <summary>
         /// Lerakja az adott színű követ a pályán a robot helyére.
@@ -167,6 +174,10 @@ namespace karesz.Core
 
         // --- SZENZOROK ---
         // doesn't trigger tick => no async alternatives
+
+        public (int x, int y) Hol_vagyok() => (CurrentPosition.Vector.x, CurrentPosition.Vector.y);
+
+        public int Merre_néz() => (int)CurrentPosition.Rotation;
 
         /// <summary>
         /// Megadja, hogy az adott színből mennyi köve van a robotnak.

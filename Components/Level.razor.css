@@ -1,0 +1,13 @@
+﻿.level-container {
+    display: grid;
+    grid-template-columns: repeat(var(--level-cols), 1fr);
+    grid-gap: 1px;
+    width: 100%;
+    height: auto;
+    padding: 0 2rem;
+}
+
+.level-container div {
+    background-color: white;
+    aspect-ratio: 1;
+}

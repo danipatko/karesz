@@ -21,13 +21,14 @@ namespace karesz.Runner
         private static partial Regex KareszFeladatRe();
 
         // match "public void DIÁK_ROBOTJAI("
-        [GeneratedRegex(@"public[\s\n]+void[\s\n]+DIÁK_ROBOTJAI[\s\n]*\(", RegexOptions.Compiled, "en-150")]
+        [GeneratedRegex(@"public[\s\n]+(|override[\s\n]+)void[\s\n]+DIÁK_ROBOTJAI[\s\n]*\(", RegexOptions.Compiled, "en-150")]
         private static partial Regex OverrideRe();
 
         private const string USING_TASKS = "using System.Threading.Tasks;\n";
         private const string USING_KARESZ = "using karesz.Core;\n";
         private const string AWAIT_PREFIX = "await ";
         private const string AWAIT_SUFFIX = "Async";
+        public const string DIAK_ROBOTJAI = nameof(DIAK_ROBOTJAI);
 
         public static string Asyncronize(string code)
         {
@@ -39,7 +40,10 @@ namespace karesz.Runner
 
             code = KareszFunctionRe().Replace(code, $"{AWAIT_PREFIX}$1.$2{AWAIT_SUFFIX}(");
             code = KareszFeladatRe().Replace(code, $"$1.Feladat = async delegate(");
-            code = OverrideRe().Replace(code, $"public override void DIÁK_ROBOTJAI(");
+            // NOTE:
+            // The A instead of Á in DIÁK_ is intentional, because InvokeMember seems to be 
+            // unable to find methods with a capital non-ascii letter in the name. Weird.
+            code = OverrideRe().Replace(code, $"public void {DIAK_ROBOTJAI}(");
 
             return code;
         }

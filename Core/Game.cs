@@ -1,27 +1,14 @@
-﻿using karesz.Runner;
-using Microsoft.VisualStudio.Threading;
+﻿using Microsoft.VisualStudio.Threading;
+using karesz.Runner;
 
 namespace karesz.Core
 {
     public class Game
     {
-        public static async Task Run()
+        public static async Task RunAsync()
         {
             await CompilerSerivce.CompileAsync(WorkspaceService.Code, CompilerSerivce.CompilationMode.Async);
             CompilerSerivce.LoadAndInvoke();
-
-            //var karesz = Robot.Create("karesz");
-            //karesz.Feladat = async delegate ()
-            //{
-            //    while (true)
-            //    {
-            //        for (var i = 0; i < 3; i++)
-            //            await karesz.LépjAsync();
-            //        await karesz.ForduljAsync(1);
-            //    }
-            //};
-
-            return;
 
             var cts = new CancellationTokenSource();
 
@@ -77,6 +64,12 @@ namespace karesz.Core
     {
         public static Robot Create(string név)
         {
+            if (Robots.TryGetValue(név, out var robot))
+            {
+                Console.Error.WriteLine($"{név} robot már létezik, nem lesz új robot létrehozva.");
+                return robot;
+            }
+
             var r = new Robot(név);
             Robots.Add(név, r);
             return r;

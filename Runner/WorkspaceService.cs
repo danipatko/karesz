@@ -36,12 +36,11 @@ namespace karesz.Runner
                 typeof(Console).Assembly, // System.Console
                 typeof(IQueryable).Assembly, // System.Linq.Expressions
                 // typeof(object).Assembly, // everything?!
-                typeof(Game).Assembly,
                 typeof(Robot).Assembly,
                 typeof(Karesz.Form).Assembly,
                 typeof(Karesz.Form1).Assembly,
             ];
-
+        
         public static async Task InitAsync(HttpClient httpClient)
         {
             // load assemblies
@@ -104,9 +103,9 @@ namespace {nameof(Karesz)}
     
     public partial class {nameof(Karesz.Form1)} : {nameof(Karesz.Form)}
     {{
-        public override void {nameof(Karesz.Form1.DIÁK_ROBOTJAI)}()
+        public void {nameof(Karesz.Form1.DIÁK_ROBOTJAI)}()
         {{
-            var karesz = Robot.Get(""karesz"");
+            var karesz = Robot.Get(""Karesz"");
 
             karesz.Feladat = delegate () {{
                 while(true) karesz.Lépj();

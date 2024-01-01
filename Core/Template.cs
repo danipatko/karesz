@@ -1,11 +1,10 @@
 ﻿namespace Karesz
 {
     using karesz.Core;
-    
+
     public class Form
     {
         // this method is the entry point
-        // should be overridden
         public virtual void DIÁK_ROBOTJAI() { }
 
         public const int fekete = (int)Level.Tile.Black;
@@ -17,14 +16,19 @@
 
         public const int jobbra = 1;
         public const int balra = -1;
-    };
 
-    public partial class Form1 : Form
-    {
+        public const int észak = 0;
+        public const int kelet = 1;
+        public const int dél = 2;
+        public const int nyugat = 3;
+
         // TODO: add plugins and stuff here
-        public Form1()
+        public Form()
         {
+            Console.WriteLine("Creating default karesz...");
             Robot.Create("Karesz");
         }
-    }
+    };
+
+    public partial class Form1 : Form { }
 }
