@@ -1,5 +1,7 @@
 ﻿#pragma warning disable VSTHRD200 // Use "Async" suffix for async methods (bullshit warning)
 
+using karesz.Runner;
+
 namespace karesz.Core
 {
     public partial class Robot
@@ -243,8 +245,10 @@ namespace karesz.Core
             return CurrentLevel.InBounds(target) ? distance : -1; // ??
         }
 
-        // TODO!
-        // public void Mondd(string ezt) => MessageBox.Show(Név + ": " + ezt);
+        /// <summary>
+        /// MessageBox híján karesz logol egy sort
+        /// </summary>
+        public void Mondd(string ezt) => Output.WriteLine($"[{Név}]: {ezt}");
 
         #endregion
     }

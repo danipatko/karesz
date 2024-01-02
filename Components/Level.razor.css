@@ -1,13 +1,24 @@
 ﻿.level-container {
+    position: relative;
     display: grid;
     grid-template-columns: repeat(var(--level-cols), 1fr);
     grid-gap: 1px;
-    width: 100%;
+    width: calc(100% - 2rem);
     height: auto;
-    padding: 0 2rem;
+    margin: 1rem;
 }
 
-.level-container div {
+.level-container > .tile {
     background-color: white;
     aspect-ratio: 1;
+}
+
+.level-container > .overlayed {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.test {
+    background-color: red;
 }

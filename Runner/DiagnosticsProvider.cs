@@ -1,4 +1,6 @@
-﻿namespace karesz.Runner
+﻿using Microsoft.CodeAnalysis;
+
+namespace karesz.Runner
 {
     public partial class DiagnosticsProvider
     {
@@ -31,7 +33,7 @@
                 var linespan = results.Diagnostics[i].Location.GetLineSpan();
                 issues[i] = new Issue
                 {
-                    Message = $"{results.Diagnostics[i].GetMessage()} ({results.Diagnostics[i].Id})",
+                    Message = FmtMessage(results.Diagnostics[i]),
                     Severity = (int)results.Diagnostics[i].Severity,
                     StartLineNumber = linespan.StartLinePosition.Line + 1, // offset needed for whatever reason
                     EndLineNumber = linespan.EndLinePosition.Line + 1,
@@ -42,6 +44,9 @@
 
             return issues;
         }
-    }
+
+        public static string FmtMessage(Diagnostic diagnostic) => $"[{diagnostic.Severity}] {diagnostic.GetMessage()} ({diagnostic.Id})";
+
+	}
 }
 

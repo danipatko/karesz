@@ -9,10 +9,9 @@
     </Panel1>
     <Panel2>
         <Level />
+        <button onclick=@Run>Compile And Run</button>  
     </Panel2>
 </FluentSplitter>
-
-@* <button onclick=@Run>Compile And Run</button>  *@
 
 @code {
     [Inject] public HttpClient HttpClient { get; set; }
@@ -23,5 +22,10 @@
         // Console.WriteLine(level!.ToHeatString());
 
         await Game.RunAsync();
+
+        Console.WriteLine(Output.Content);
+        Output.Flush();
+        Console.WriteLine("---");
+        Console.WriteLine(Output.Content);
     }
 }

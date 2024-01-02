@@ -1,11 +1,15 @@
 ﻿<div class="level-container" style="--level-cols: @(Columns);">
 	@for (int i = 0; i < Columns * Rows; i++)
 	{
-		<div/>
+		<div class="tile"/>
 	}
+
+	<div class="overlayed test">hell yeah</div>
 </div>
 
 @code {
 	public int Columns { get; set; } = 41;
 	public int Rows { get; set; } = 31;
+
+	protected override bool ShouldRender() => false;
 }

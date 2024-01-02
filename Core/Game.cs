@@ -7,16 +7,33 @@ namespace karesz.Core
     {
         public static async Task RunAsync()
         {
-            await CompilerSerivce.CompileAsync(WorkspaceService.Code, CompilerSerivce.CompilationMode.Async);
-            CompilerSerivce.LoadAndInvoke();
-
             var cts = new CancellationTokenSource();
 
-            _ = Robot.RunAsync(cts.Token);
+			await Output.StartCaptureAsync();
+            await Console.Out.WriteLineAsync("--- CONSOLE OUTPUT ---");
 
+            var result = await CompilerSerivce.CompileAsync(WorkspaceService.Code, CompilerSerivce.CompilationMode.Async);
+
+            if(!result.Success)
+            {
+				await Console.Out.WriteLineAsync("--- COMPILATION FAILED ---");
+				await Console.Out.WriteLineAsync(string.Join("\n", result.Diagnostics.Select(DiagnosticsProvider.FmtMessage)));
+				await Output.ResetCaptureAsync();
+				return;
+            }
+
+            CompilerSerivce.LoadAndInvoke();
+
+			//await Console.Out.WriteLineAsync("--- INVOKE FINISHED ---");
+
+			_ = Robot.RunAsync(cts.Token);
+
+            // DEBUG
             await Task.Delay(2500);
-            await Console.Out.WriteLineAsync("cancelling now");
-            await cts.CancelAsync();
+            await Console.Out.WriteLineAsync("--- CANCELLING NOW ---");
+			await cts.CancelAsync();
+
+			await Output.ResetCaptureAsync();
 
             #region proof of concept
 
@@ -103,6 +120,8 @@ namespace karesz.Core
             // step survivors
             foreach (Robot robot in Robots.Values)
                 robot.CurrentPosition = robot.ProposedPosition;
+
+            Events.RaiseRender();
 
             TickCount++;
         }

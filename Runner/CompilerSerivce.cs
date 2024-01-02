@@ -40,9 +40,6 @@ namespace karesz.Runner
                         new KeyValuePair<string, ReportDiagnostic>("CS1702", ReportDiagnostic.Suppress),
                     });
 
-        public static event EventHandler? CompileStarted;
-        public static event EventHandler? CompileFinished;
-
         public static async Task InitAsync(List<PortableExecutableReference> basicReferenceAssemblies)
         {
             BaseCompilation = CSharpCompilation.Create(DEFAULT_ROOT_NAMESPACE, Array.Empty<SyntaxTree>(), basicReferenceAssemblies, compilationOptions);
@@ -59,8 +56,6 @@ namespace karesz.Runner
         {
             await Task.Yield();
 
-            CompileStarted?.Invoke(null, EventArgs.Empty);
-
             WorkspaceService.Code = mode == CompilationMode.Async ? Preprocess.Asyncronize(code) : code;
             var syntaxTree = CSharpSyntaxTree.ParseText(SourceText.From(WorkspaceService.Code));
             var compilation = BaseCompilation.AddSyntaxTrees(syntaxTree);
@@ -74,7 +69,6 @@ namespace karesz.Runner
                 AssemblyBytes = ms.ToArray();
             }
 
-            CompileFinished?.Invoke(null, EventArgs.Empty);
             return result;
         }
 
