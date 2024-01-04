@@ -56,7 +56,8 @@
 .stone.Green,
 .stone.Yellow,
 .stone.Snow {
-    animation: dropin ease-out 100ms;
+    /*disable animation for now*/
+    /*animation: dropin ease-out 100ms;*/ 
 }
 
 @keyframes dropin {

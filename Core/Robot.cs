@@ -51,7 +51,7 @@ namespace karesz.Core
         private static async Task Tick()
         {
             // block until released
-            await resetEvent.WaitAsync();
+            await resetEvent.WaitAsync(CancellationToken);
         }
 
         public override string ToString() => $"{Név} at {Position}";

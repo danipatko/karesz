@@ -107,6 +107,7 @@ namespace karesz.Core
 
         private static readonly Dictionary<string, Tile[,]> CachedMaps = [];
 
+        // TODO: don't set currentlevel or return void
         public static async Task<Level?> LoadAsync(HttpClient httpClient, string levelName)
         {
             // use cache if available
@@ -118,11 +119,10 @@ namespace karesz.Core
             {
                 var levelContent = await FetchLevelTextAsync(httpClient, levelName);
 
-                var parsedMap = Parse(levelName, levelContent);
+                var parsedMap = Parse(levelContent);
                 CachedMaps.Add(levelName, parsedMap);
-                var copy = parsedMap;
 
-                var level = new Level(levelName, copy);
+                var level = new Level(levelName, parsedMap);
                 Robot.CurrentLevel = level;
                 return level;
             }
@@ -145,7 +145,7 @@ namespace karesz.Core
         /// </summary>
         /// <exception cref="FormatException"><paramref name="levelContent"/> cannot be parsed.</exception>
         /// <exception cref="OverflowException"><paramref name="levelContent"/> cannot be parsed.</exception>
-        private static Tile[,] Parse(string levelName, string levelContent)
+        private static Tile[,] Parse(string levelContent)
         {
             var jagged = levelContent.Replace("\r", string.Empty).Split('\n').Select(x => x.Split('\t').Select(y => (Tile)Convert.ToInt32(y)).ToImmutableArray()).ToImmutableArray();
             var map = new Tile[jagged[0].Length, jagged.Length];
@@ -181,11 +181,7 @@ namespace karesz.Core
 		public static Level Reset()
 		{
 			if (CachedMaps.TryGetValue(Robot.CurrentLevel.LevelName, out var levelMap))
-            {
-                var copy = levelMap;
-                Console.Error.WriteLine("real");
-                return new Level(Robot.CurrentLevel.LevelName, copy);
-            }
+                return new Level(Robot.CurrentLevel.LevelName, levelMap);
             else
                 return Default;
         }

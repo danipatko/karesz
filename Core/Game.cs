@@ -7,51 +7,36 @@ namespace karesz.Core
     {
 		public static Robot.RenderCallback? RenderFunction { get; set; }
 
-        private static int Counter = 0;
+   //     public static void Test()
+   //     {
+   //         var karesz = Robot.Create("Karesz");
 
-        public static async Task Test()
+			//karesz.FeladatAsync = async delegate ()
+   //         {
+   //             await karesz.ForduljAsync(1);
+
+			//	while (!karesz.Ki_fog_lépni_a_pályáról())
+			//	{
+			//		//Console.WriteLine("///REAL/// step");
+			//		await karesz.LépjAsync();
+			//		//Console.WriteLine("///REAL/// pick up stone");
+			//		await karesz.Tegyél_le_egy_kavicsotAsync();
+			//	}
+			//};
+   //     }
+
+        /// <summary>
+        /// Starts game
+        /// </summary>
+		public static async Task StartAsync(CancellationToken cancellationToken = default)
         {
-            var karesz = Robot.Create("Karesz");
-
-            
-
-			karesz.FeladatAsync = async delegate ()
-            {
-                Console.WriteLine("FELADAT SERIAL {0}", Counter);
-                await karesz.ForduljAsync(1);
-				while (!karesz.Ki_fog_lépni_a_pályáról())
-				{
-					await karesz.LépjAsync();
-					await karesz.Tegyél_le_egy_kavicsotAsync();
-
-					// Console.Error.WriteLine("looped");
-				}
-			};
-            Counter++;
-        }
-
-		public static async Task RunAsync(CancellationToken cancellationToken = default)
-        {
-            if (RenderFunction == null)
+			if (RenderFunction == null)
                 throw new Exception("No render callback was specified for Game.RunAsync!");
 
-            Robot.Cleanup(true);
-			await RenderFunction.Invoke([], []);
-
-			await Test();
-            await Robot.RunAsync(RenderFunction, cancellationToken);
-
-			return;
-
-            // cleanup and rerender
-            Robot.Cleanup(true);
-            await RenderFunction.Invoke([], []);
-
-			await Output.StartCaptureAsync();
+			// await Output.StartCaptureAsync();
             Output.WriteLine("--- CONSOLE OUTPUT ---");
 
             var result = await CompilerSerivce.CompileAsync(WorkspaceService.Code, CompilerSerivce.CompilationMode.Async, cancellationToken);
-
             if(!result.Success)
             {
 				Output.WriteLine("--- COMPILATION FAILED ---");
@@ -60,50 +45,37 @@ namespace karesz.Core
 				return;
             }
 
-            CompilerSerivce.LoadAndInvoke();
+            var invokeSuccess = CompilerSerivce.LoadAndInvoke(); // will write error to stdout
+            if(!invokeSuccess)
+            {
+				Output.WriteLine($"--- INVOKE FAILED ---");
+				await Output.ResetCaptureAsync();
+				return;
+			}
 
-            Output.WriteLine("--- INVOKE FINISHED ---");
+			Output.WriteLine("--- INVOKE FINISHED ---");
 
-            await Robot.RunAsync(RenderFunction, cancellationToken)
-                .ContinueWith(async _ => await Output.ResetCaptureAsync());
+            await Robot.RunAsync(RenderFunction, cancellationToken: cancellationToken);
+
+			Output.WriteLine("--- GAME ENDED ---");
+
+			// await Output.ResetCaptureAsync();
 		}
     }
 
     // "multiplayer"
     public partial class Robot
     {
+        // TODO: move to settings
+        private const int TICK_INTERVAL = 50; // ms
+
         private static bool DidChangeMap = false;
-
-        public static Robot Create(string név)
-        {
-            if (Robots.TryGetValue(név, out var robot))
-            {
-                Console.Error.WriteLine($"{név} robot már létezik, nem lesz új robot létrehozva.");
-                return robot;
-            }
-
-            var r = new Robot(név);
-            Robots.Add(név, r);
-            return r;
-        }
-
-        public static void Cleanup(bool removeAll = false)
-		{
-            if (removeAll)
-                Robots.Clear();
-
-			Console.WriteLine("before {0}", string.Join("\n", CurrentLevel.Enumerate()));
-			CurrentLevel = Level.Reset();
-            Console.WriteLine("after {0}", string.Join("\n", CurrentLevel.Enumerate()));
-            TickCount = 0;
-		}
 
 		private static int TickCount = 0;
 
-        private const int TICK_INTERVAL = 100; // ms
-
         // used for signalling & waiting
         private static readonly AsyncManualResetEvent resetEvent = new(false);
+		private static CancellationToken CancellationToken = CancellationToken.None;
 
         private static readonly Dictionary<string, Robot> Robots = [];
 
@@ -116,27 +88,26 @@ namespace karesz.Core
 
         public delegate Task RenderCallback(Position[] positions, (int x, int y, Level.Tile tile)[]? tiles);
 
-		public static async Task MakeRoundAsync(RenderCallback render)
-        {
-            // move projectiles
-            Projectile.TickAll();
+		public static Robot Create(string név)
+		{
+			if (Robots.TryGetValue(név, out var robot))
+			{
+				Console.Error.WriteLine($"{név} robot már létezik, nem lesz új robot létrehozva.");
+				return robot;
+			}
 
-            // remove killed robots
-            foreach (string name in RobotsToExecute().Distinct())
-            {
-                Kill(name);
-                Output.WriteLine($"[{name}] died");
-            }
+			var r = new Robot(név);
+			Robots.Add(név, r);
+			return r;
+		}
 
-            // step survivors
-            foreach (Robot robot in Robots.Values)
-                robot.CurrentPosition = robot.ProposedPosition;
+		public static void Cleanup(bool removeAll = false)
+		{
+			if (removeAll)
+				Robots.Clear();
 
-			TickCount++;
-
-            // trigger UI render
-            await render.Invoke(Robots.Values.Select(x => x.Position).ToArray(), DidChangeMap ? CurrentLevel.Enumerate().ToArray() : null);
-            DidChangeMap = false;
+			CurrentLevel = Level.Reset();
+			TickCount = 0;
 		}
 
         private static void Kill(string name)
@@ -145,6 +116,9 @@ namespace karesz.Core
                 CurrentLevel[robot.Position.Vector] = Level.Tile.Black;
         }
 
+        /// <summary>
+        /// List all robot objects that are about to die in this round
+        /// </summary>
         private static IEnumerable<string> RobotsToExecute()
         {
             foreach (var robot in Robots.Values)
@@ -166,26 +140,97 @@ namespace karesz.Core
             }
         }
 
-        public static async Task RunAsync(RenderCallback render, CancellationToken cancellationToken)
+        /// <summary>
+        /// Perform a round in game
+        /// </summary>
+		private static void MakeRound()
+		{
+			// move projectiles
+			Projectile.TickAll();
+
+			// remove killed robots
+			foreach (string name in RobotsToExecute().Distinct())
+			{
+				Kill(name);
+				Output.WriteLine($"[{name}] died");
+			}
+
+			// step survivors
+			foreach (Robot robot in Robots.Values)
+				robot.CurrentPosition = robot.ProposedPosition;
+
+			TickCount++;
+		}
+
+        /// <summary>
+        /// Runs the entire game...
+        /// </summary>
+        /// <param name="render">Callback delegate that gets the robot positions and stone list (if changed).</param>
+        /// <param name="autoCleanup">Call Cleanup after finishing or cancellation</param>
+        /// <param name="cancellationToken"></param>
+		public static async Task RunAsync(RenderCallback render, bool autoCleanup = false, CancellationToken cancellationToken = default)
         {
-            foreach (var robot in Robots.Values)
+            var cts = new CancellationTokenSource();
+            // create a combined token so token can be cancelled after the while loop
+            var cct = cts.Token.CombineWith(cancellationToken);
+            // make the combined CancellationToken available to async tick() calls
+            // cancelling Task.Run will not dispose the task it is running, just request a cancellation
+            // if the task is blocking at a resetEvent.WaitOne() call, the task will run indefinitely
+            CancellationToken = cct.Token;
+
+            // run cleanup on cancel
+			if (autoCleanup)
             {
- 				_ = Task.Run(new FeladatAction(robot.FeladatAsync).Invoke, cancellationToken);
+				CancellationToken.Register(() =>
+                {
+					Cleanup();
+                    // _ = render.Invoke(Robots.Values.Select(x => x.Position).ToArray(), CurrentLevel.Enumerate().ToArray());
+                });
             }
 
-            while (!cancellationToken.IsCancellationRequested && Robots.Count > 0)
+		    List<Task> runningTasks = [];
+            foreach (var robot in Robots.Values)
+            {
+                var task = Task.Run(robot.FeladatAsync.Invoke, cct.Token);
+                runningTasks.Add(task);
+            }
+
+            while (!CancellationToken.IsCancellationRequested && Robots.Count > 0)
             {
                 // block Tick() calls again
                 resetEvent.Reset();
+
                 // time for robot tasks to block again
-                await Task.Delay(TICK_INTERVAL, cancellationToken);
+                await Task.Delay(TICK_INTERVAL, CancellationToken);
+
                 // run multiplayer logic
-                await MakeRoundAsync(render);
-                // unblock Tick() calls
-                resetEvent.Set();
+                MakeRound();
+
+				// trigger UI render
+				await render.Invoke(Robots.Values.Select(x => x.Position).ToArray(), DidChangeMap ? CurrentLevel.Enumerate().ToArray() : null);
+				DidChangeMap = false;
+
+				// unblock Tick() calls
+				resetEvent.Set();
+
                 // DEBUG
-                Console.WriteLine("--- ROUND {0} ---\n{1}\n---", TickCount, string.Join(", ", Robots.Values));
+                //Console.WriteLine("--- ROUND {0} ---\n{1}\n---", TickCount, string.Join(", ", Robots.Values));
             }
-        }
-    }
+
+			// tasks may be still running, block them!
+			resetEvent.Reset();
+
+			// still need to cancel
+			if (!CancellationToken.IsCancellationRequested)
+                await cts.CancelAsync();
+
+			foreach (var item in runningTasks)
+            {
+                if (item.Status != TaskStatus.WaitingForActivation)
+                    item.Dispose();
+                else
+                    await Console.Error.WriteLineAsync("A task is still running... well fuck");
+            }
+		}
+	}
 }

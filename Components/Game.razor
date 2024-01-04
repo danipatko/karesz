@@ -52,10 +52,7 @@
 				Positions = positions;
 
 				if (map != null)
-				{
-					Console.WriteLine("should render stones");
 					Stones = map;
-				}
 
 				StateHasChanged();
 			});
@@ -68,7 +65,7 @@
 
 		running = true;
 
-		await Core.Game.RunAsync(cts.Token)
+		await Core.Game.StartAsync(cts.Token)
 			.ContinueWith(_ =>
 			{
 				running = false;

@@ -93,8 +93,7 @@ namespace karesz.Runner
             }
             catch (Exception e)
             {
-                // TODO: add to diagnostics
-                Console.Error.WriteLine("Failed to find entry point.\n{0}", e.Message);
+                Console.WriteLine("Failed to find entry point.\n{0}", e.Message);
                 return false;
             }
         }
