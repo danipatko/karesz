@@ -81,3 +81,9 @@ html, body {
 code {
     color: #c02d76;
 }
+
+.center-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}

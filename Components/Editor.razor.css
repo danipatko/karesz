@@ -33,7 +33,10 @@
     background-color: var(--accent-base-color); /* vscode blue */
     height: var(--statusbar-height);
     width: 100%;
-    padding: 0 1rem;
+    padding: 0 0.5rem;
+    display: flex;
+    justify-content: start;
+    align-items: center;
 }
 
 .editor-statusbar.compiling {

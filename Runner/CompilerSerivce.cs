@@ -52,16 +52,16 @@ namespace karesz.Runner
         /// Updates WorkspaceService.Code, and compiles code.
         /// If successful, saves assembly binary to AssemblyBytes, which can be loaded runtime.
         /// </summary>
-        public static async Task<EmitResult> CompileAsync(string code, CompilationMode mode = default)
+        public static async Task<EmitResult> CompileAsync(string code, CompilationMode mode = default, CancellationToken cancellationToken = default)
         {
             await Task.Yield();
 
             WorkspaceService.Code = mode == CompilationMode.Async ? Preprocess.Asyncronize(code) : code;
-            var syntaxTree = CSharpSyntaxTree.ParseText(SourceText.From(WorkspaceService.Code));
+            var syntaxTree = CSharpSyntaxTree.ParseText(SourceText.From(WorkspaceService.Code), cancellationToken: cancellationToken);
             var compilation = BaseCompilation.AddSyntaxTrees(syntaxTree);
 
             MemoryStream ms = new();
-            EmitResult result = compilation.Emit(ms);
+            EmitResult result = compilation.Emit(ms, cancellationToken: cancellationToken);
 
             if (result.Success)
             {

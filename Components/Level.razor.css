@@ -1,15 +1,14 @@
 ﻿.level-container {
-    position: relative;
     display: grid;
-    grid-template-columns: repeat(var(--level-cols), 1fr);
+    /*grid-template-columns: repeat(var(--level-cols), 1fr);*/
+    grid-template-columns: repeat(var(--level-cols), var(--tile-size));
     grid-gap: 1px;
-    width: calc(100% - 2rem);
+    width: 100%;
     height: auto;
-    margin: 1rem;
 }
 
 .level-container > .tile {
-    background-color: white;
+    background-color: #d3d3d3;
     aspect-ratio: 1;
 }
 
@@ -17,8 +16,4 @@
     position: absolute;
     top: 0;
     left: 0;
-}
-
-.test {
-    background-color: red;
 }

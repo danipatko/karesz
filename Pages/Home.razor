@@ -8,8 +8,7 @@
         <Editor />
     </Panel1>
     <Panel2>
-        <Level />
-        <button onclick=@Run>Compile And Run</button>  
+        <Game />
     </Panel2>
 </FluentSplitter>
 
@@ -20,12 +19,5 @@
     {
         // var level = await Level.LoadAsync(HttpClient, "v0.txt");
         // Console.WriteLine(level!.ToHeatString());
-
-        await Game.RunAsync();
-
-        Console.WriteLine(Output.Content);
-        Output.Flush();
-        Console.WriteLine("---");
-        Console.WriteLine(Output.Content);
     }
 }

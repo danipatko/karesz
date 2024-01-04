@@ -1,0 +1,8 @@
+﻿<div class="robot" style="--rotation: @((int)Position.Rotation); --offset-x: @(Position.Vector.x); --offset-y: @(Position.Vector.y)">
+	<img src="/sprites/karesz.png" />
+</div>
+
+@code {
+	[Parameter]
+	public Position Position { get; set; }
+}

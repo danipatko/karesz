@@ -39,7 +39,7 @@ namespace karesz.Runner
                 code = USING_TASKS + code;
 
             code = KareszFunctionRe().Replace(code, $"{AWAIT_PREFIX}$1.$2{AWAIT_SUFFIX}(");
-            code = KareszFeladatRe().Replace(code, $"$1.Feladat = async delegate(");
+            code = KareszFeladatRe().Replace(code, $"$1.FeladatAsync = async delegate(");
             // NOTE:
             // The A instead of Á in DIÁK_ is intentional, because InvokeMember seems to be 
             // unable to find methods with a capital non-ascii letter in the name. Weird.

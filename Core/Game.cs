@@ -5,80 +5,75 @@ namespace karesz.Core
 {
     public class Game
     {
-        public static async Task RunAsync()
+		public static Robot.RenderCallback? RenderFunction { get; set; }
+
+        private static int Counter = 0;
+
+        public static async Task Test()
         {
-            var cts = new CancellationTokenSource();
+            var karesz = Robot.Create("Karesz");
+
+            
+
+			karesz.FeladatAsync = async delegate ()
+            {
+                Console.WriteLine("FELADAT SERIAL {0}", Counter);
+                await karesz.ForduljAsync(1);
+				while (!karesz.Ki_fog_lépni_a_pályáról())
+				{
+					await karesz.LépjAsync();
+					await karesz.Tegyél_le_egy_kavicsotAsync();
+
+					// Console.Error.WriteLine("looped");
+				}
+			};
+            Counter++;
+        }
+
+		public static async Task RunAsync(CancellationToken cancellationToken = default)
+        {
+            if (RenderFunction == null)
+                throw new Exception("No render callback was specified for Game.RunAsync!");
+
+            Robot.Cleanup(true);
+			await RenderFunction.Invoke([], []);
+
+			await Test();
+            await Robot.RunAsync(RenderFunction, cancellationToken);
+
+			return;
+
+            // cleanup and rerender
+            Robot.Cleanup(true);
+            await RenderFunction.Invoke([], []);
 
 			await Output.StartCaptureAsync();
-            await Console.Out.WriteLineAsync("--- CONSOLE OUTPUT ---");
+            Output.WriteLine("--- CONSOLE OUTPUT ---");
 
-            var result = await CompilerSerivce.CompileAsync(WorkspaceService.Code, CompilerSerivce.CompilationMode.Async);
+            var result = await CompilerSerivce.CompileAsync(WorkspaceService.Code, CompilerSerivce.CompilationMode.Async, cancellationToken);
 
             if(!result.Success)
             {
-				await Console.Out.WriteLineAsync("--- COMPILATION FAILED ---");
-				await Console.Out.WriteLineAsync(string.Join("\n", result.Diagnostics.Select(DiagnosticsProvider.FmtMessage)));
+				Output.WriteLine("--- COMPILATION FAILED ---");
+				Output.WriteLine(string.Join("\n", result.Diagnostics.Select(DiagnosticsProvider.FmtMessage)));
 				await Output.ResetCaptureAsync();
 				return;
             }
 
             CompilerSerivce.LoadAndInvoke();
 
-			//await Console.Out.WriteLineAsync("--- INVOKE FINISHED ---");
+            Output.WriteLine("--- INVOKE FINISHED ---");
 
-			_ = Robot.RunAsync(cts.Token);
-
-            // DEBUG
-            await Task.Delay(2500);
-            await Console.Out.WriteLineAsync("--- CANCELLING NOW ---");
-			await cts.CancelAsync();
-
-			await Output.ResetCaptureAsync();
-
-            #region proof of concept
-
-            //Console.WriteLine("thread {0} has been called", Thread.CurrentThread.ManagedThreadId);
-
-            //var resetEvent = new AsyncManualResetEvent(false);
-
-            //_ = Task.Run(async () =>
-            //{
-            //    Console.WriteLine("Waiting for parent task");
-            //    for (int i = 0; i < 3; i++)
-            //    {
-            //       await resetEvent.WaitAsync();
-            //        Console.WriteLine("Task #1 at {0}", i);
-            //    }
-            //    Console.WriteLine("Task #1 finished");
-            //});
-
-            //_ = Task.Run(async () =>
-            //{
-            //    Console.WriteLine("Waiting for parent task");
-            //    for (int i = 0; i < 3; i++)
-            //    {
-            //        await resetEvent.WaitAsync();
-            //        Console.WriteLine("Task #2 at {0}", i);
-            //    }
-            //    Console.WriteLine("Task #2 finished");
-            //});
-
-            //for (int i = 0; i < 3; i++)
-            //{
-            //    Console.WriteLine("--- waiting a sec");
-
-            //    await Task.Delay(1000);
-            //    resetEvent.PulseAll();
-
-            //    Console.WriteLine("--- reset");
-            //}
-            #endregion
-        }
+            await Robot.RunAsync(RenderFunction, cancellationToken)
+                .ContinueWith(async _ => await Output.ResetCaptureAsync());
+		}
     }
 
     // "multiplayer"
     public partial class Robot
     {
+        private static bool DidChangeMap = false;
+
         public static Robot Create(string név)
         {
             if (Robots.TryGetValue(név, out var robot))
@@ -92,9 +87,20 @@ namespace karesz.Core
             return r;
         }
 
-        private static int TickCount = 0;
+        public static void Cleanup(bool removeAll = false)
+		{
+            if (removeAll)
+                Robots.Clear();
 
-        private const int TICK_INTERVAL = 200;
+			Console.WriteLine("before {0}", string.Join("\n", CurrentLevel.Enumerate()));
+			CurrentLevel = Level.Reset();
+            Console.WriteLine("after {0}", string.Join("\n", CurrentLevel.Enumerate()));
+            TickCount = 0;
+		}
+
+		private static int TickCount = 0;
+
+        private const int TICK_INTERVAL = 100; // ms
 
         // used for signalling & waiting
         private static readonly AsyncManualResetEvent resetEvent = new(false);
@@ -108,23 +114,30 @@ namespace karesz.Core
 
         private static bool IsPositionOccupied(Vector position) => Robots.Any(x => x.Value.CurrentPosition.Vector == position);
 
-        public static void MakeRound()
+        public delegate Task RenderCallback(Position[] positions, (int x, int y, Level.Tile tile)[]? tiles);
+
+		public static async Task MakeRoundAsync(RenderCallback render)
         {
             // move projectiles
             Projectile.TickAll();
 
             // remove killed robots
             foreach (string name in RobotsToExecute().Distinct())
+            {
                 Kill(name);
+                Output.WriteLine($"[{name}] died");
+            }
 
             // step survivors
             foreach (Robot robot in Robots.Values)
                 robot.CurrentPosition = robot.ProposedPosition;
 
-            Events.RaiseRender();
+			TickCount++;
 
-            TickCount++;
-        }
+            // trigger UI render
+            await render.Invoke(Robots.Values.Select(x => x.Position).ToArray(), DidChangeMap ? CurrentLevel.Enumerate().ToArray() : null);
+            DidChangeMap = false;
+		}
 
         private static void Kill(string name)
         {
@@ -153,25 +166,25 @@ namespace karesz.Core
             }
         }
 
-        public static async Task RunAsync(CancellationToken cancellationToken)
+        public static async Task RunAsync(RenderCallback render, CancellationToken cancellationToken)
         {
-            await Console.Out.WriteLineAsync(string.Join(", ", Robots.Values));
             foreach (var robot in Robots.Values)
             {
-                _ = Task.Run(robot.Feladat.Invoke, cancellationToken);
+ 				_ = Task.Run(new FeladatAction(robot.FeladatAsync).Invoke, cancellationToken);
             }
 
-            while (!cancellationToken.IsCancellationRequested)
+            while (!cancellationToken.IsCancellationRequested && Robots.Count > 0)
             {
                 // block Tick() calls again
                 resetEvent.Reset();
                 // time for robot tasks to block again
                 await Task.Delay(TICK_INTERVAL, cancellationToken);
                 // run multiplayer logic
-                MakeRound();
+                await MakeRoundAsync(render);
                 // unblock Tick() calls
                 resetEvent.Set();
-                Console.WriteLine(string.Join(", ", Robots.Values));
+                // DEBUG
+                Console.WriteLine("--- ROUND {0} ---\n{1}\n---", TickCount, string.Join(", ", Robots.Values));
             }
         }
     }

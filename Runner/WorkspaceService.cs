@@ -108,7 +108,19 @@ namespace {nameof(Karesz)}
             var karesz = Robot.Get(""Karesz"");
 
             karesz.Feladat = delegate () {{
-                while(true) karesz.Lépj();
+                karesz.Fordulj(jobbra);
+
+                while(!karesz.Ki_fog_lépni_a_pályáról()) {{
+                    karesz.Lépj();
+                    karesz.Tegyél_le_egy_kavicsot(fekete);
+
+                    Console.Error.WriteLine(""looped"");
+                }}
+
+                // suicide test
+                karesz.Lépj();
+
+                Console.Error.WriteLine(""exiting"");
             }};
         }}
     }}

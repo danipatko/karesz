@@ -3,13 +3,12 @@
 	{
 		<div class="tile"/>
 	}
-
-	<div class="overlayed test">hell yeah</div>
 </div>
 
 @code {
+	[Parameter]
 	public int Columns { get; set; } = 41;
+	
+	[Parameter]
 	public int Rows { get; set; } = 31;
-
-	protected override bool ShouldRender() => false;
 }

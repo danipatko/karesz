@@ -1,0 +1,83 @@
+﻿@* nav here *@
+
+<FluentStack HorizontalGap="10" Style="padding: 1rem; padding-bottom: 0;">
+	<FluentButton IconStart="@(new Icons.Filled.Size20.LauncherSettings())"
+				  Appearance="Appearance.Accent"
+				  Loading="@running"
+				  OnClick="@Run">
+		Compile and Run
+	</FluentButton>
+	<FluentButton IconStart="@(new Icons.Filled.Size16.FStop())"
+				  Appearance="Appearance.Neutral"
+				  Disabled="@(!running)"
+				  OnClick="@Stop">
+		Stop
+	</FluentButton>
+</FluentStack>
+
+@* stuff *@
+<div class="center-content">
+	<div class="game-container" style="--tile-size: 20px; /*calc((100% - 2rem) / 41);*/">
+		<Level />
+
+		@foreach (var item in Positions)
+		{
+			<Karesz Position=@item />
+		}
+
+		@foreach ((int x, int y, Core.Level.Tile tile) in Stones)
+		{
+			<Stone X=@x Y=@y Tile=@tile />
+		}
+	</div>
+</div>
+
+@code {
+	private Position[] Positions { get; set; } = [];
+
+	private (int x, int y, Core.Level.Tile tile)[] Stones { get; set; } = [];
+
+	bool running = false;
+
+	CancellationTokenSource cts = new();
+
+	protected override void OnInitialized()
+	{
+		// register game renderer
+		Core.Game.RenderFunction = async delegate (Position[] positions, (int x, int y, Core.Level.Tile tile)[]? map)
+		{
+			// make sure we are running in the UI sync context
+			await InvokeAsync(() =>
+			{
+				Positions = positions;
+
+				if (map != null)
+				{
+					Console.WriteLine("should render stones");
+					Stones = map;
+				}
+
+				StateHasChanged();
+			});
+		};
+	}
+
+	private async Task Run()
+	{
+		cts = new();
+
+		running = true;
+
+		await Core.Game.RunAsync(cts.Token)
+			.ContinueWith(_ =>
+			{
+				running = false;
+				Console.WriteLine(Output.Content);
+				Output.Flush();
+			});
+	}
+
+	private async Task Stop() => await cts.CancelAsync();
+}
+
+

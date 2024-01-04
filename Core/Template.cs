@@ -26,7 +26,8 @@
         public Form()
         {
             Console.WriteLine("Creating default karesz...");
-            Robot.Create("Karesz");
+            var karesz = Robot.Create("Karesz");
+            karesz.Teleport(10, 10);
         }
     };
 

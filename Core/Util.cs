@@ -25,9 +25,9 @@
 
         public static Vector Normalize(Direction direction) => direction switch
         {
-            Direction.Up => new(0, 1),
+            Direction.Up => new(0, -1),
             Direction.Right => new(1, 0),
-            Direction.Down => new(0, -1),
+            Direction.Down => new(0, 1),
             Direction.Left => new(-1, 0),
             _ => throw new Exception("Undefined direction.") // should never happen
         };

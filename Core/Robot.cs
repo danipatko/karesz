@@ -1,6 +1,7 @@
 ﻿#pragma warning disable VSTHRD200 // Use "Async" suffix for async methods (bullshit warning)
 
 using karesz.Runner;
+using Microsoft.FluentUI.AspNetCore.Components;
 
 namespace karesz.Core
 {
@@ -30,9 +31,10 @@ namespace karesz.Core
         }
 
         public delegate Task FeladatAction();
-        public FeladatAction Feladat { get; set; }
+        public Action Feladat { get; set; }
+		public FeladatAction FeladatAsync { get; set; }
 
-        private int[] Stones { get; set; } = [];
+		private int[] Stones { get; set; } = new int[8] { 100, 100, 100, 100, 100, 100, 100, 100 };
 
         public string Név { get; }
 
@@ -69,6 +71,7 @@ namespace karesz.Core
         {
             Position = new(x, y, CurrentPosition.Rotation);
         }
+
         public async Task TeleportAsync(int x, int y)
         {
             Teleport(x, y);
@@ -80,8 +83,10 @@ namespace karesz.Core
         /// </summary>
         public void Lépj()
         {
-            Position += RelativeDirection.Forward;
+			Position += RelativeDirection.Forward;
+			Say($"lépj ide {ProposedPosition}");
         }
+
         public async Task LépjAsync()
         {
             Lépj();
@@ -101,6 +106,7 @@ namespace karesz.Core
                 _ => throw new Exception($"A megadott forgásirány ({forgásirány}) érvénytelen! A forgásirány értéke -1 (balra) vagy 1 (jobbra) lehet.")
             };
         }
+
         public async Task ForduljAsync(int forgásirány)
         {
             Fordulj(forgásirány);
@@ -118,22 +124,26 @@ namespace karesz.Core
         /// <param name="szín"></param>
         public void Tegyél_le_egy_kavicsot(int szín = Karesz.Form.fekete)
         {
-            if(CurrentLevel[CurrentPosition.Vector] != Level.Tile.Empty)
+			Say($"kavics ide {CurrentPosition.Vector}");
+
+			if (CurrentLevel[CurrentPosition.Vector] != Level.Tile.Empty)
             {
-                Say("Nem tudom a kavicsot lerakni, mert van lerakva kavics!");
+                Say($"Nem tudom a kavicsot lerakni ide {CurrentPosition.Vector}, mert van lerakva kavics!");
                 return;
             }
 
-            if (Stones[szín - 2] <= 0)
-            {   
-                // TODO: nameof probably doesn't work like that
-                Say($"Nem tudom a kavicsot lerakni, mert nincs {nameof(szín)} színű kavicsom!");
+			if (Stones[szín - 2] <= 0)
+            {
+                Say($"Nem tudom a kavicsot lerakni ide {CurrentPosition.Vector}, mert nincs {szín} színű kavicsom!");
                 return;
             }
 
-            CurrentLevel[CurrentPosition.Vector] = (Level.Tile)szín;
+			CurrentLevel[CurrentPosition.Vector] = (Level.Tile)szín;
             Stones[szín - 2]--;
+
+            DidChangeMap = true;
         }
+
         public async Task Tegyél_le_egy_kavicsotAsync(int szín = Karesz.Form.fekete)
         {
             Tegyél_le_egy_kavicsot(szín);
@@ -154,8 +164,11 @@ namespace karesz.Core
 
             Stones[(int)tileUnder - 2]++;
             CurrentLevel[CurrentPosition.Vector] = Level.Tile.Empty;
-        }
-        public async Task Vegyél_fel_egy_kavicsotAsync()
+
+			DidChangeMap = true;
+		}
+
+		public async Task Vegyél_fel_egy_kavicsotAsync()
         {
             Vegyél_fel_egy_kavicsot();
             await Tick();

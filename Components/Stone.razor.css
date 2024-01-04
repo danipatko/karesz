@@ -1,0 +1,69 @@
+﻿.stone {
+    position: absolute;
+    left: calc(var(--offset-x) * var(--tile-size) + var(--offset-x) * 1px);
+    top: calc(var(--offset-y) * var(--tile-size) + var(--offset-y) * 1px);
+    display: block;
+    aspect-ratio: 1;
+    width: var(--tile-size);
+    height: var(--tile-size);
+}
+
+.stone.Wall {
+    width: calc(var(--tile-size) + 1px);
+    height: calc(var(--tile-size) + 1px);
+    background-color: #a52a2a;
+}
+
+.stone.Black {
+    border-radius: 9999px;
+    background-color: black;
+}
+
+.stone.Red {
+    border-radius: 9999px;
+    background-color: red;
+}
+
+.stone.Green {
+    border-radius: 9999px;
+    background-color: green;
+}
+
+.stone.Yellow {
+    border-radius: 9999px;
+    background-color: yellow;
+}
+
+.stone.Snow {
+    border-radius: 9999px;
+    background-color: white;
+}
+
+.stone.Lava {
+    width: calc(var(--tile-size) + 1px);
+    height: calc(var(--tile-size) + 1px);
+    background-color: #ffa500;
+}
+
+.stone.Water {
+    width: calc(var(--tile-size) + 1px);
+    height: calc(var(--tile-size) + 1px);
+    background-color: #0000ff;
+}
+
+.stone.Black,
+.stone.Red,
+.stone.Green,
+.stone.Yellow,
+.stone.Snow {
+    animation: dropin ease-out 100ms;
+}
+
+@keyframes dropin {
+    from {
+        transform: scale(0);
+    }
+    to {
+        transform: scale(1);
+    }
+}

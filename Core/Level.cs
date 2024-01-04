@@ -64,8 +64,8 @@ namespace karesz.Core
         {
             if (position.x > 0) yield return position + Direction.Left;
             if (position.x < Width - 1) yield return position + Direction.Right;
-            if (position.y > 0) yield return position + Direction.Down;
-            if (position.y < Height - 1) yield return position + Direction.Up;
+            if (position.y > 0) yield return position + Direction.Up;
+            if (position.y < Height - 1) yield return position + Direction.Down;
         }
 
         #region Heat stuff (?)
@@ -105,25 +105,26 @@ namespace karesz.Core
 
         #region Level loading
 
-        private static readonly Dictionary<string, Level> CachedLevels = [];
+        private static readonly Dictionary<string, Tile[,]> CachedMaps = [];
 
         public static async Task<Level?> LoadAsync(HttpClient httpClient, string levelName)
         {
             // use cache if available
-            if(CachedLevels.TryGetValue(levelName, out var level))
-                return level!;
+            if(CachedMaps.TryGetValue(levelName, out var levelMap))
+                return new Level(levelName, levelMap);
 
             // load & parse
             try
             {
                 var levelContent = await FetchLevelTextAsync(httpClient, levelName);
 
-                var parsed = Parse(levelName, levelContent);
-                CachedLevels.Add(levelName, parsed);
+                var parsedMap = Parse(levelName, levelContent);
+                CachedMaps.Add(levelName, parsedMap);
+                var copy = parsedMap;
 
-                Robot.CurrentLevel = parsed;
-
-                return parsed;
+                var level = new Level(levelName, copy);
+                Robot.CurrentLevel = level;
+                return level;
             }
             catch (Exception e)
             {
@@ -144,7 +145,7 @@ namespace karesz.Core
         /// </summary>
         /// <exception cref="FormatException"><paramref name="levelContent"/> cannot be parsed.</exception>
         /// <exception cref="OverflowException"><paramref name="levelContent"/> cannot be parsed.</exception>
-        private static Level Parse(string levelName, string levelContent)
+        private static Tile[,] Parse(string levelName, string levelContent)
         {
             var jagged = levelContent.Replace("\r", string.Empty).Split('\n').Select(x => x.Split('\t').Select(y => (Tile)Convert.ToInt32(y)).ToImmutableArray()).ToImmutableArray();
             var map = new Tile[jagged[0].Length, jagged.Length];
@@ -153,17 +154,43 @@ namespace karesz.Core
                 for (int x = 0; x < jagged[y].Length; x++)
                     map[x, y] = jagged[y][x];
 
-            return new Level(levelName, map);
+            return map;
         }
 
         // an empty level
-        public static readonly Level Default = new("default", new Tile[41, 31]);
+        public static Level Default { get => new("default", new Tile[41, 31]); } 
 
         #endregion
 
         #region Utils
 
-        public override string ToString()
+        /// <summary>
+        /// Array of tiles that are not empty
+        /// </summary>
+        public IEnumerable<(int x, int y, Tile tile)> Enumerate()
+        {
+			for (int y = 0; y < Height; y++)
+                for (int x = 0; x < Width; x++)
+                    if (Map[x, y] != Tile.Empty)
+                        yield return (x, y, Map[x, y]);
+		}
+
+		/// <summary>
+		/// Reloads the current level from cache, use this to clean up stones placed by robot
+		/// </summary>
+		public static Level Reset()
+		{
+			if (CachedMaps.TryGetValue(Robot.CurrentLevel.LevelName, out var levelMap))
+            {
+                var copy = levelMap;
+                Console.Error.WriteLine("real");
+                return new Level(Robot.CurrentLevel.LevelName, copy);
+            }
+            else
+                return Default;
+        }
+
+		public override string ToString()
         {
             var result = string.Empty;
             for (int y = 0; y < Height; y++)
