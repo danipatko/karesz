@@ -101,11 +101,20 @@ namespace karesz.Core
                         HeatAtPosition(new(x, y));
         }
 
-        #endregion
+        public IEnumerable<(int x, int y, int h)> EnumerateHeat()
+        {
+            for (int x = 0; x < Width; x++)
+                for (int y = 0; y < Height; y++)
+                    if (HeatMap[x, y] != 0)
+                        yield return (x, y, HeatMap[x, y]);
+		}
 
-        #region Level loading
 
-        private static readonly Dictionary<string, Tile[,]> CachedMaps = [];
+		#endregion
+
+		#region Level loading
+
+		private static readonly Dictionary<string, Tile[,]> CachedMaps = [];
 
         // TODO: don't set currentlevel or return void
         public static async Task<Level?> LoadAsync(HttpClient httpClient, string levelName)

@@ -51,14 +51,14 @@
     background-color: #0000ff;
 }
 
-.stone.Black,
+/*disable animation for now*/
+/*.stone.Black,
 .stone.Red,
 .stone.Green,
 .stone.Yellow,
 .stone.Snow {
-    /*disable animation for now*/
-    /*animation: dropin ease-out 100ms;*/ 
-}
+    animation: dropin ease-out 100ms;
+}*/
 
 @keyframes dropin {
     from {

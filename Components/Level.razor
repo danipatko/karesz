@@ -1,7 +1,10 @@
 ﻿<div class="level-container" style="--level-cols: @(Columns);">
-	@for (int i = 0; i < Columns * Rows; i++)
+	@for (int y = 0; y < Rows; y++)
 	{
-		<div class="tile"/>
+		@for (int x = 0; x < Columns; x++)
+		{
+			<div class="tile x@(x) y@(y)" />
+		}
 	}
 </div>
 

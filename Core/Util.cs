@@ -45,7 +45,7 @@
         public static bool InBounds(Vector v, int maxX, int maxY, int minX = 0, int minY = 0) => InBounds(v.x, v.y, maxX, maxY, minX, minY);
 
         public static bool InBounds(int x, int y, int maxX, int maxY, int minX = 0, int minY = 0) =>
-            x >= minX && y >= minY && x <= maxX && y <= maxY;
+            x >= minX && y >= minY && x < maxX && y < maxY;
 
         public readonly static Vector Null = new(0, 0);
 

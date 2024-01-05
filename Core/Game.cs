@@ -88,15 +88,18 @@ namespace karesz.Core
 
         public delegate Task RenderCallback(Position[] positions, (int x, int y, Level.Tile tile)[]? tiles);
 
-		public static Robot Create(string név)
+        public static Robot Create(string név, int startX = 0, int startY = 0, Direction startRotation = Direction.Up)
 		{
 			if (Robots.TryGetValue(név, out var robot))
 			{
 				Console.Error.WriteLine($"{név} robot már létezik, nem lesz új robot létrehozva.");
-				return robot;
+				robot.Position = new Position(startX, startY, startRotation);
+                return robot;
 			}
 
-			var r = new Robot(név);
+			var r = new Robot(név) {
+				Position = new Position(startX, startY, startRotation)
+			};
 			Robots.Add(név, r);
 			return r;
 		}
@@ -170,7 +173,10 @@ namespace karesz.Core
         /// <param name="cancellationToken"></param>
 		public static async Task RunAsync(RenderCallback render, bool autoCleanup = false, CancellationToken cancellationToken = default)
         {
-            var cts = new CancellationTokenSource();
+			// render before start
+            await render.Invoke(Robots.Values.Select(x => x.Position).ToArray(), CurrentLevel.Enumerate().ToArray());
+
+			var cts = new CancellationTokenSource();
             // create a combined token so token can be cancelled after the while loop
             var cct = cts.Token.CombineWith(cancellationToken);
             // make the combined CancellationToken available to async tick() calls

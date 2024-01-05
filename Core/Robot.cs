@@ -45,7 +45,7 @@ namespace karesz.Core
         private void Say(string message)
         {
             Console.WriteLine($"[{Név}]: {message}");
-            // TODO: create event so message can be shown in frontent aswell
+            // TODO: create event so message can be shown in frontend aswell
         }
 
         private static async Task Tick()
