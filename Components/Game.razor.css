@@ -3,6 +3,5 @@
     margin: 1rem;
 /*    width: calc(100% - 2rem); */
     height: auto;
-    overflow-y: hidden;
-    overflow-x: auto;
+    overflow: hidden;
 }

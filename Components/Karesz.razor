@@ -1,8 +1,20 @@
-﻿<div class="robot" style="--rotation: @((int)Position.Rotation); --offset-x: @(Position.Vector.x); --offset-y: @(Position.Vector.y)">
+﻿
+<div id="@Name" class="robot" style="--rotation: @((int)Position.Rotation); --offset-x: @(Position.Vector.x); --offset-y: @(Position.Vector.y)">
 	<img src="/sprites/karesz.png" />
 </div>
+
+<FluentTooltip Anchor="@Name"
+			   Delay="0"
+			   MaxWidth="400px"
+			   UseTooltipService="false"
+			   Position="TooltipPosition.Bottom">
+	@Name at @(Position.Vector) looking @(Position.Rotation)
+</FluentTooltip>
 
 @code {
 	[Parameter]
 	public Position Position { get; set; }
+
+	[Parameter]
+	public string Name { get; set; } = "Karesz";
 }

@@ -7,24 +7,6 @@ namespace karesz.Core
     {
 		public static Robot.RenderCallback? RenderFunction { get; set; }
 
-   //     public static void Test()
-   //     {
-   //         var karesz = Robot.Create("Karesz");
-
-			//karesz.FeladatAsync = async delegate ()
-   //         {
-   //             await karesz.ForduljAsync(1);
-
-			//	while (!karesz.Ki_fog_lépni_a_pályáról())
-			//	{
-			//		//Console.WriteLine("///REAL/// step");
-			//		await karesz.LépjAsync();
-			//		//Console.WriteLine("///REAL/// pick up stone");
-			//		await karesz.Tegyél_le_egy_kavicsotAsync();
-			//	}
-			//};
-   //     }
-
         /// <summary>
         /// Starts game
         /// </summary>
@@ -32,6 +14,8 @@ namespace karesz.Core
         {
 			if (RenderFunction == null)
                 throw new Exception("No render callback was specified for Game.RunAsync!");
+
+            Robot.Cleanup();
 
 			// await Output.StartCaptureAsync();
             Output.WriteLine("--- CONSOLE OUTPUT ---");
@@ -55,7 +39,7 @@ namespace karesz.Core
 
 			Output.WriteLine("--- INVOKE FINISHED ---");
 
-            await Robot.RunAsync(RenderFunction, cancellationToken: cancellationToken);
+            await Robot.RunAsync(RenderFunction, autoCleanup: false, cancellationToken: cancellationToken);
 
 			Output.WriteLine("--- GAME ENDED ---");
 
@@ -63,30 +47,42 @@ namespace karesz.Core
 		}
     }
 
+    // basic utility class because we don't want to expose robot instance position
+    public struct RobotInfo(string name, Position position)
+    {
+        public string Name { get; set; } = name;
+        public Position Position { get; set; } = position;
+    }
+
     // "multiplayer"
     public partial class Robot
     {
-        // TODO: move to settings
-        private const int TICK_INTERVAL = 50; // ms
+        #region Params
 
-        private static bool DidChangeMap = false;
+        public delegate Task RenderCallback(RobotInfo[] positions, (int x, int y, Level.Tile tile)[]? tiles);
 
+		// TODO: move to settings
+		private const int TICK_INTERVAL = 50; // ms
+
+		// game state
+		private static readonly Dictionary<string, Robot> Robots = [];
+
+        public static Level CurrentLevel { get; set; } = Level.Default;
+
+		private static bool DidChangeMap = false;
 		private static int TickCount = 0;
 
         // used for signalling & waiting
         private static readonly AsyncManualResetEvent resetEvent = new(false);
 		private static CancellationToken CancellationToken = CancellationToken.None;
+		
+        // current state for rendering
+        private static RobotInfo[] StatusQuo { get => Robots.Values.Select(x => new RobotInfo(x.Név, x.Position)).ToArray(); }
 
-        private static readonly Dictionary<string, Robot> Robots = [];
+		#endregion
 
-        public static Level CurrentLevel { get; set; } = Level.Default;
-
-        // throws an exception if name is not present in dictionary
-        public static Robot Get(string név) => Robots[név]!;
-
-        private static bool IsPositionOccupied(Vector position) => Robots.Any(x => x.Value.CurrentPosition.Vector == position);
-
-        public delegate Task RenderCallback(Position[] positions, (int x, int y, Level.Tile tile)[]? tiles);
+		// throws an exception if name is not present in dictionary
+		public static Robot Get(string név) => Robots[név]!;
 
         public static Robot Create(string név, int startX = 0, int startY = 0, Direction startRotation = Direction.Up)
 		{
@@ -104,20 +100,15 @@ namespace karesz.Core
 			return r;
 		}
 
-		public static void Cleanup(bool removeAll = false)
-		{
-			if (removeAll)
-				Robots.Clear();
-
-			CurrentLevel = Level.Reset();
-			TickCount = 0;
-		}
-
-        private static void Kill(string name)
+        public static void Displace(string name, int x, int y)
         {
-            if (Robots.Remove(name, out var robot))
-                CurrentLevel[robot.Position.Vector] = Level.Tile.Black;
+            if(Robots.TryGetValue(name, out var robot))
+            {
+                robot.Position = new Position(x, y);
+            }
         }
+
+        #region Game lifecycle
 
         /// <summary>
         /// List all robot objects that are about to die in this round
@@ -165,6 +156,7 @@ namespace karesz.Core
 			TickCount++;
 		}
 
+
         /// <summary>
         /// Runs the entire game...
         /// </summary>
@@ -174,7 +166,7 @@ namespace karesz.Core
 		public static async Task RunAsync(RenderCallback render, bool autoCleanup = false, CancellationToken cancellationToken = default)
         {
 			// render before start
-            await render.Invoke(Robots.Values.Select(x => x.Position).ToArray(), CurrentLevel.Enumerate().ToArray());
+            await render.Invoke(StatusQuo, CurrentLevel.Enumerate().ToArray());
 
 			var cts = new CancellationTokenSource();
             // create a combined token so token can be cancelled after the while loop
@@ -190,7 +182,7 @@ namespace karesz.Core
 				CancellationToken.Register(() =>
                 {
 					Cleanup();
-                    // _ = render.Invoke(Robots.Values.Select(x => x.Position).ToArray(), CurrentLevel.Enumerate().ToArray());
+                    _ = render.Invoke(StatusQuo, CurrentLevel.Enumerate().ToArray());
                 });
             }
 
@@ -213,7 +205,7 @@ namespace karesz.Core
                 MakeRound();
 
 				// trigger UI render
-				await render.Invoke(Robots.Values.Select(x => x.Position).ToArray(), DidChangeMap ? CurrentLevel.Enumerate().ToArray() : null);
+				await render.Invoke(StatusQuo, DidChangeMap ? CurrentLevel.Enumerate().ToArray() : null);
 				DidChangeMap = false;
 
 				// unblock Tick() calls
@@ -238,5 +230,29 @@ namespace karesz.Core
                     await Console.Error.WriteLineAsync("A task is still running... well fuck");
             }
 		}
+
+        /// <summary>
+        /// Remove a robot from players and place a black rock to the place of death
+        /// </summary>
+		private static void Kill(string name)
+		{
+			if (Robots.Remove(name, out var robot))
+				CurrentLevel[robot.Position.Vector] = Level.Tile.Black;
+		}
+
+		/// <summary>
+        /// Resets tick counter, removes all rocks placed in the run.
+        /// If removeRobots is true, every player's robot will be deleted.
+        /// </summary>
+        public static void Cleanup(bool removeRobots = false)
+		{
+			if (removeRobots)
+				Robots.Clear();
+
+			CurrentLevel.Reset();
+			TickCount = 0;
+		}
+
+		#endregion
 	}
 }

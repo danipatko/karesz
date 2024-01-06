@@ -21,7 +21,7 @@ namespace karesz.Core
             Water = 8,
         }
 
-        protected Tile[,] Map;
+		protected Tile[,] Map;
         protected int[,] HeatMap;
 
         public string LevelName = string.Empty;
@@ -38,7 +38,7 @@ namespace karesz.Core
             MapHeat();
         }
 
-        public Tile this[int x, int y]
+		public Tile this[int x, int y]
         {
             get => InBounds(x, y) ? Map[x, y] : Tile.None;
             set
@@ -109,30 +109,32 @@ namespace karesz.Core
                         yield return (x, y, HeatMap[x, y]);
 		}
 
-
 		#endregion
 
 		#region Level loading
 
 		private static readonly Dictionary<string, Tile[,]> CachedMaps = [];
 
-        // TODO: don't set currentlevel or return void
         public static async Task<Level?> LoadAsync(HttpClient httpClient, string levelName)
         {
             // use cache if available
-            if(CachedMaps.TryGetValue(levelName, out var levelMap))
-                return new Level(levelName, levelMap);
+            if (CachedMaps.TryGetValue(levelName, out var levelMap))
+            {
+                var level = new Level(levelName, Copy(levelMap)); // make sure this is not passed by reference!
+				Robot.CurrentLevel = level;
+				return level;
+            }
 
             // load & parse
             try
             {
                 var levelContent = await FetchLevelTextAsync(httpClient, levelName);
-
                 var parsedMap = Parse(levelContent);
                 CachedMaps.Add(levelName, parsedMap);
 
                 var level = new Level(levelName, parsedMap);
                 Robot.CurrentLevel = level;
+
                 return level;
             }
             catch (Exception e)
@@ -144,6 +146,10 @@ namespace karesz.Core
 
         private static async Task<string> FetchLevelTextAsync(HttpClient httpClient, string levelName)
         {
+            // warn
+            if (!LEVEL_NAMES.Contains(levelName))
+                await Console.Error.WriteLineAsync($"Warning: '{levelName}' is not present in options.");
+
             var result = await httpClient.GetAsync($"/levels/{levelName}");
             result.EnsureSuccessStatusCode();
             return await result.Content.ReadAsStringAsync();
@@ -156,7 +162,7 @@ namespace karesz.Core
         /// <exception cref="OverflowException"><paramref name="levelContent"/> cannot be parsed.</exception>
         private static Tile[,] Parse(string levelContent)
         {
-            var jagged = levelContent.Replace("\r", string.Empty).Split('\n').Select(x => x.Split('\t').Select(y => (Tile)Convert.ToInt32(y)).ToImmutableArray()).ToImmutableArray();
+            var jagged = levelContent.Replace("\r", string.Empty).Split('\n').Where(x => !string.IsNullOrEmpty(x)).Select(x => x.Split('\t').Select(y => (Tile)Convert.ToInt32(y)).ToImmutableArray()).ToImmutableArray();
             var map = new Tile[jagged[0].Length, jagged.Length];
 
             for (int y = 0; y < jagged.Length; y++)
@@ -167,16 +173,28 @@ namespace karesz.Core
         }
 
         // an empty level
-        public static Level Default { get => new("default", new Tile[41, 31]); } 
+        public static Level Default { get => new("default", new Tile[41, 31]); }
 
-        #endregion
+		#endregion
 
-        #region Utils
+		#region Utils
 
-        /// <summary>
-        /// Array of tiles that are not empty
-        /// </summary>
-        public IEnumerable<(int x, int y, Tile tile)> Enumerate()
+        // copies a Tile matrix
+		private static Tile[,] Copy(Tile[,] from)
+		{
+			var map = new Tile[from.GetLength(0), from.GetLength(1)];
+
+			for (int y = 0; y < from.GetLength(1); y++)
+				for (int x = 0; x < from.GetLength(0); x++)
+					map[x, y] = from[x, y];
+
+			return map;
+		}
+
+		/// <summary>
+		/// Array of tiles that are not empty
+		/// </summary>
+		public IEnumerable<(int x, int y, Tile tile)> Enumerate()
         {
 			for (int y = 0; y < Height; y++)
                 for (int x = 0; x < Width; x++)
@@ -187,12 +205,12 @@ namespace karesz.Core
 		/// <summary>
 		/// Reloads the current level from cache, use this to clean up stones placed by robot
 		/// </summary>
-		public static Level Reset()
+		public void Reset()
 		{
-			if (CachedMaps.TryGetValue(Robot.CurrentLevel.LevelName, out var levelMap))
-                return new Level(Robot.CurrentLevel.LevelName, levelMap);
+            if (CachedMaps.TryGetValue(Robot.CurrentLevel.LevelName, out var originalMap))
+                Map = Copy(originalMap);
             else
-                return Default;
+                Map = Default.Map;
         }
 
 		public override string ToString()
@@ -217,7 +235,63 @@ namespace karesz.Core
                 result += "\n";
             }
             return result;
-        }
+		}
+
+        #endregion
+
+        #region Hard-coded level options
+
+        // level options for autocomplete
+        public static readonly string[] LEVEL_NAMES = ["l0.txt",
+            "l1.txt",
+            "l2.txt",
+            "palya01.txt",
+            "palya02.txt",
+            "palya03.txt",
+            "palya04.txt",
+            "palya05.txt",
+            "palya06.txt",
+            "palya07.txt",
+            "palya08.txt",
+            "palya09.txt",
+            "palya10.txt",
+            "palya11.txt",
+            "palya12.txt",
+            "palya13.txt",
+            "palya14.txt",
+            "palya15.txt",
+            "palya16.txt",
+            "palya17.txt",
+            "palya18.txt",
+            "palya19.txt",
+            "palya20.txt",
+            "palya21.txt",
+            "palya22.txt",
+            "palya23.txt",
+            "palya24.txt",
+            "palya25.txt",
+            "palya26.txt",
+            "palya27.txt",
+            "palya28.txt",
+            "palya29.txt",
+            "palya30.txt",
+            "palya31.txt",
+            "palya32.txt",
+            "palya33.txt",
+            "palya34.txt",
+            "palya35.txt",
+            "palya36.txt",
+            "palya37.txt",
+            "palya38.txt",
+            "palya39.txt",
+            "palya40.txt",
+            "palya41.txt",
+            "palya42.txt",
+            "palya43.txt",
+            "palya44.txt",
+            "palya45.txt",
+            "palya46.txt",
+            "v0.txt"];
 
         #endregion
     }

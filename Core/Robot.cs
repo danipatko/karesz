@@ -1,14 +1,18 @@
 ﻿#pragma warning disable VSTHRD200 // Use "Async" suffix for async methods (bullshit warning)
 
 using karesz.Runner;
-using Microsoft.FluentUI.AspNetCore.Components;
 
 namespace karesz.Core
 {
     public partial class Robot
     {
-        #region Instance Properties
-        private Robot(string név)
+        public delegate Task FeladatAction();
+
+		private static int[] DEFAULT_STONES { get => new int[] { 100, 100, 100, 100, 100, 100, 100, 100 }; }
+
+		#region Instance Properties
+
+		private Robot(string név)
         {
             Név = név;
         }
@@ -30,11 +34,10 @@ namespace karesz.Core
             }
         }
 
-        public delegate Task FeladatAction();
         public Action Feladat { get; set; }
 		public FeladatAction FeladatAsync { get; set; }
 
-		private int[] Stones { get; set; } = new int[8] { 100, 100, 100, 100, 100, 100, 100, 100 };
+		private int[] Stones { get; set; } = DEFAULT_STONES;
 
         public string Név { get; }
 
@@ -84,7 +87,7 @@ namespace karesz.Core
         public void Lépj()
         {
 			Position += RelativeDirection.Forward;
-			Say($"lépj ide {ProposedPosition}");
+			//Say($"lépj ide {ProposedPosition}"); // DEBUG
         }
 
         public async Task LépjAsync()
@@ -124,7 +127,7 @@ namespace karesz.Core
         /// <param name="szín"></param>
         public void Tegyél_le_egy_kavicsot(int szín = Karesz.Form.fekete)
         {
-			Say($"kavics ide {CurrentPosition.Vector}");
+			//Say($"kavics ide {CurrentPosition.Vector}"); // DEBUG
 
 			if (CurrentLevel[CurrentPosition.Vector] != Level.Tile.Empty)
             {
@@ -258,11 +261,13 @@ namespace karesz.Core
             return CurrentLevel.InBounds(target) ? distance : -1; // ??
         }
 
-        /// <summary>
-        /// MessageBox híján karesz logol egy sort
-        /// </summary>
-        public void Mondd(string ezt) => Output.WriteLine($"[{Név}]: {ezt}");
+		private static bool IsPositionOccupied(Vector position) => Robots.Any(x => x.Value.CurrentPosition.Vector == position);
 
-        #endregion
-    }
+		/// <summary>
+		/// MessageBox híján karesz logol egy sort
+		/// </summary>
+		public void Mondd(string ezt) => Output.WriteLine($"[{Név}]: {ezt}");
+
+		#endregion
+	}
 }

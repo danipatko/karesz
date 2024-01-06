@@ -1,55 +1,64 @@
 ﻿@* nav here *@
 
-<FluentStack HorizontalGap="10" Style="padding: 1rem; padding-bottom: 0;">
-	<FluentButton IconStart="@(new Icons.Filled.Size20.LauncherSettings())"
+<FluentStack HorizontalGap="20" Style="padding: 1rem; padding-bottom: 0;" VerticalAlignment="VerticalAlignment.Center">
+	<FluentButton IconStart="@(new Icons.Filled.Size20.CaretRight())"
 				  Appearance="Appearance.Accent"
-				  Loading="@running"
+				  Loading="@IsRunning"
 				  OnClick="@Run">
 		Compile and Run
 	</FluentButton>
-	<FluentButton IconStart="@(new Icons.Filled.Size16.FStop())"
+	<FluentButton IconStart="@(new Icons.Filled.Size16.CheckboxUnchecked())"
 				  Appearance="Appearance.Neutral"
-				  Disabled="@(!running)"
+				  Disabled="@(!IsRunning)"
 				  OnClick="@Stop">
 		Stop
 	</FluentButton>
+
+	<FluentDivider Style="height: 30px;" Role="DividerRole.Presentation" Orientation="Orientation.Vertical"></FluentDivider>
+
+	<FluentSelect Height="50vh" TOption="string" Items=@Core.Level.LEVEL_NAMES SelectedOptionChanged="@OnLevelSelected" Value=@(Core.Robot.CurrentLevel.LevelName) /> 
+
+	<FluentSwitch Style="width: 150px;" @bind-Value="@DisplayHeatmap">Heatmap</FluentSwitch>
+
 </FluentStack>
 
 @* stuff *@
 <div class="center-content">
-	<style> @(HeatStyle) </style>
-	<div class="game-container" style="--tile-size: 20px; /*calc((100% - 2rem) / 41);*/">
-		<Level />
+	<style> @(DisplayHeatmap ? HeatStyle : string.Empty) </style>
+	<FluentHorizontalScroll Speed="600" Easing=ScrollEasing.EaseInOut>
+		<div class="game-container" style="--tile-size: 20px; /*calc((100% - 2rem) / 41);*/">
+			<Level />
 
-		@foreach (var item in Positions)
-		{
-			<Karesz Position=@item />
-		}
+			@foreach (var item in Positions)
+			{
+				<Karesz Position=@item.Position Name=@item.Name />
+			}
 
-		@foreach ((int x, int y, Core.Level.Tile tile) in Stones)
-		{
-			<Stone X=@x Y=@y Tile=@tile />
-		}
-	</div>
+			@foreach ((int x, int y, Core.Level.Tile tile) in Stones)
+			{
+				<Stone X=@x Y=@y Tile=@tile />
+			}
+		</div>
+	</FluentHorizontalScroll>
 </div>
 
 @code {
 	[Inject] public HttpClient HttpClient { get; set; }
 
-	private Position[] Positions { get; set; } = [];
+	private RobotInfo[] Positions { get; set; } = [];
 
 	private (int x, int y, Core.Level.Tile tile)[] Stones { get; set; } = [];
 
-	bool running = false;
+	private bool IsRunning { get; set; } = false;
+
+	private string HeatStyle { get; set; } = string.Empty;
 
 	CancellationTokenSource cts = new();
 
-	string HeatStyle = string.Empty;
-
-	protected override async Task OnInitializedAsync()
+	protected override void OnInitialized()
 	{
 		// register game renderer
-		Core.Game.RenderFunction = async delegate (Position[] positions, (int x, int y, Core.Level.Tile tile)[]? map)
+		Core.Game.RenderFunction = async delegate (RobotInfo[] positions, (int x, int y, Core.Level.Tile tile)[]? map)
 		{
 			// make sure we are running in the UI sync context
 			await InvokeAsync(() =>
@@ -62,20 +71,17 @@
 				StateHasChanged();
 			});
 		};
-
-		await LoadLevelAsync();
 	}
 
 	private async Task Run()
 	{
 		cts = new();
-
-		running = true;
+		IsRunning = true;
 
 		await Core.Game.StartAsync(cts.Token)
 			.ContinueWith(_ =>
 			{
-				running = false;
+				IsRunning = false;
 				Console.WriteLine(Output.Content);
 				Output.Flush();
 			});
@@ -90,18 +96,24 @@
 		return $"rgb({r}, {g}, {b})";
 	}
 
-	private async Task LoadLevelAsync()
-	{
-		// TODO: string field to load level
-		var lvl = await Core.Level.LoadAsync(HttpClient, "v0.txt");
-		if (lvl == null) return;
-
-		Stones = lvl.Enumerate().ToArray();
-		HeatStyle = string.Join("\n", lvl.EnumerateHeat().Select((a) => $".tile.x{a.x}.y{a.y} {{ background-color: {RGBScale(a.h, max: 700f)} !important; }}"));
-		StateHasChanged();	
-	}
-
 	private async Task Stop() => await cts.CancelAsync();
-}
 
+	// ---------- 
+
+	private bool DisplayHeatmap = false;
+
+	private async Task OnLevelSelected(string levelName)
+	{
+		var level = await Core.Level.LoadAsync(HttpClient, levelName);
+		// TODO: alert
+		if (level == null)
+		{
+			return;
+		}
+
+		Stones = level.Enumerate().ToArray();
+		HeatStyle = string.Join("\n", level.EnumerateHeat().Select((a) => $".tile.x{a.x}.y{a.y} {{ background-color: {RGBScale(a.h, max: 700f)} !important; }}"));
+		StateHasChanged();
+	}
+}
 

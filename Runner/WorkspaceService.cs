@@ -113,8 +113,6 @@ namespace {nameof(Karesz)}
                 while(!karesz.Ki_fog_lépni_a_pályáról()) {{
                     karesz.Lépj();
                     karesz.Tegyél_le_egy_kavicsot(fekete);
-
-                    Console.Error.WriteLine(""looped"");
                 }}
 
                 // suicide test
