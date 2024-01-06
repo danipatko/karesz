@@ -1,0 +1,61 @@
+﻿@implements IDialogContentComponent<KareszModal.KareszData>
+
+@* Header *@
+<FluentDialogHeader ShowDismiss="true">
+    <FluentStack VerticalAlignment="VerticalAlignment.Center">
+        <FluentIcon Value="@(new Icons.Regular.Size24.StickerAdd())" />
+        <FluentLabel Typo="Typography.PaneHeader">
+            @Dialog.Instance.Parameters.Title
+        </FluentLabel>
+    </FluentStack>
+</FluentDialogHeader>
+
+@* Footer *@
+<FluentDialogFooter>
+    <FluentButton Appearance="Appearance.Accent" OnClick="@SaveAsync">Robban</FluentButton>
+    <FluentButton Appearance="Appearance.Neutral" OnClick="@CancelAsync">Storno</FluentButton>
+</FluentDialogFooter>
+
+@* Body *@
+<FluentDialogBody>
+    <p>
+        Note: You can also create robots programatically using:
+        <br/>
+        <code>Robot.Create("[name]", [X Coordinate], [Y Coordinate])</code>
+    </p>
+    <FluentStack HorizontalGap="10" Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Start">
+        <FluentTextField @bind-Value="@Content.Name">Name (must be unique)</FluentTextField>
+        <FluentNumberField Min="0" Max="40" @bind-Value="@Content.X">X coordinate</FluentNumberField>
+        <FluentNumberField Min="0" Max="30" @bind-Value="@Content.Y">Y coordinate</FluentNumberField>
+        Direction
+        <FluentSelect TOption="Direction" OptionText=@(x => x.ToString()) Items=@DIRECTIONS @bind-SelectedOption=@Content.Direction></FluentSelect>
+    </FluentStack>
+</FluentDialogBody>
+
+@code {
+    public record KareszData
+    {
+        public string Name { get; set; } = "Karesz";
+        public int X { get; set; } = 0;
+        public int Y { get; set; } = 0;
+        public Core.Direction Direction { get; set; } = Direction.Up;
+    }
+
+    private readonly static Direction[] DIRECTIONS = [Direction.Up, Direction.Right, Direction.Down, Direction.Left];
+
+    [Parameter]
+    public KareszData Content { get; set; } = default!;
+
+    [CascadingParameter]
+    public FluentDialog Dialog { get; set; } = default!;
+
+    private async Task SaveAsync()
+    {
+        await Dialog.CloseAsync(Content);
+    }
+
+    private async Task CancelAsync()
+    {
+        await Dialog.CancelAsync();
+    }
+}

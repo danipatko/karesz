@@ -3,7 +3,8 @@
 	{
 		@for (int x = 0; x < Columns; x++)
 		{
-			<div class="tile x@(x) y@(y)" />
+			var _x = x; var _y = y; @* silly aah C# lambda behaviour *@
+			<div @onclick="@(() => HandleClick(_x, _y))" class="tile x@(_x) y@(_y)" />
 		}
 	}
 </div>
@@ -11,7 +12,21 @@
 @code {
 	[Parameter]
 	public int Columns { get; set; } = 41;
-	
+
 	[Parameter]
 	public int Rows { get; set; } = 31;
+
+	public class CoordinateEventArgs : EventArgs
+	{
+		public int x { get; set; }
+		public int y { get; set; }
+	}
+
+	[Parameter]
+	public EventCallback<CoordinateEventArgs> OnClick { get; set; }
+
+	async Task HandleClick(int x, int y)
+	{
+		await OnClick.InvokeAsync(new CoordinateEventArgs { x = x, y = y });
+	}
 }

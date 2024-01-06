@@ -1,4 +1,7 @@
-﻿@* nav here *@
+﻿@inject IDialogService DialogService
+@inject HttpClient HttpClient
+
+	@* [Inject] public HttpClient HttpClient { get; set; } *@
 
 <FluentStack HorizontalGap="20" Style="padding: 1rem; padding-bottom: 0;" VerticalAlignment="VerticalAlignment.Center">
 	<FluentButton IconStart="@(new Icons.Filled.Size20.CaretRight())"
@@ -7,7 +10,7 @@
 				  OnClick="@Run">
 		Compile and Run
 	</FluentButton>
-	<FluentButton IconStart="@(new Icons.Filled.Size16.CheckboxUnchecked())"
+	<FluentButton IconStart="@(new Icons.Filled.Size16.CheckboxUnchecked().WithColor(Color.Error))"
 				  Appearance="Appearance.Neutral"
 				  Disabled="@(!IsRunning)"
 				  OnClick="@Stop">
@@ -18,40 +21,71 @@
 
 	<FluentSelect Height="50vh" TOption="string" Items=@Core.Level.LEVEL_NAMES SelectedOptionChanged="@OnLevelSelected" Value=@(Core.Robot.CurrentLevel.LevelName) /> 
 
-	<FluentSwitch Style="width: 150px;" @bind-Value="@DisplayHeatmap">Heatmap</FluentSwitch>
+	<FluentSwitch @bind-Value="@DisplayHeatmap">Heatmap</FluentSwitch>
 
+    <FluentButton @onclick=@Reset IconStart="@(new Icons.Regular.Size16.ArrowUndo())">Reset level</FluentButton>
 </FluentStack>
 
 @* stuff *@
 <div class="center-content">
 	<style> @(DisplayHeatmap ? HeatStyle : string.Empty) </style>
-	<FluentHorizontalScroll Speed="600" Easing=ScrollEasing.EaseInOut>
-		<div class="game-container" style="--tile-size: 20px; /*calc((100% - 2rem) / 41);*/">
-			<Level />
+	<div class="game-container" style="--tile-size: 20px; /*calc((100% - 2rem) / 41);*/">
+		<Level OnClick=@HandleLevelClick />
 
-			@foreach (var item in Positions)
-			{
-				<Karesz Position=@item.Position Name=@item.Name />
-			}
+		@foreach (var item in Robots)
+		{
+			<Karesz IsSelected=@(SelectedRobot.Name == item.Name)
+					Position=@item.Position 
+					Name=@item.Name />
+		}
 
-			@foreach ((int x, int y, Core.Level.Tile tile) in Stones)
-			{
-				<Stone X=@x Y=@y Tile=@tile />
-			}
-		</div>
-	</FluentHorizontalScroll>
+		@foreach ((int x, int y, Core.Level.Tile tile) in Stones)
+		{
+			<Stone X=@x Y=@y Tile=@tile />
+		}
+	</div>
 </div>
 
-@code {
-	[Inject] public HttpClient HttpClient { get; set; }
+@* robot controls  *@
 
-	private RobotInfo[] Positions { get; set; } = [];
+<FluentStack HorizontalGap="10" Style="padding: 1rem; padding-top: 0;" VerticalAlignment="VerticalAlignment.Center">
+    <FluentButton @onclick=@OpenModalAsync Disabled=@IsRunning IconStart="@(new Icons.Filled.Size16.Add())">New Robot</FluentButton>
+
+	<FluentDivider Style="height: 30px; margin: 0 1rem;" Role="DividerRole.Presentation" Orientation="Orientation.Vertical"></FluentDivider>
+
+	@* Select robot *@
+
+	<FluentSelect
+		Appearance="Appearance.Outline"
+		Disabled=@IsRunning
+		Multiple="false" 
+		TOption="RobotInfo" 
+		Items=@Robots 
+		OptionText=@(x => x.Name) 
+		@bind-SelectedOption="@SelectedRobot" />
+
+    <FluentButton @onclick=@TurnLeft Disabled=@(SelectedRobot.IsEmpty || IsRunning) IconStart="@(new Icons.Filled.Size16.ArrowUpLeft())">Turn left</FluentButton>
+    <FluentButton @onclick=@Step Disabled=@(SelectedRobot.IsEmpty || IsRunning) IconStart="@(new Icons.Filled.Size16.ArrowUp())">Step</FluentButton>
+    <FluentButton @onclick=@TurnRight Disabled=@(SelectedRobot.IsEmpty || IsRunning) IconStart="@(new Icons.Filled.Size16.ArrowUpRight())">Turn right</FluentButton>
+
+	<FluentDivider Style="height: 30px; margin: 0 0.5rem;" Role="DividerRole.Presentation" Orientation="Orientation.Vertical"></FluentDivider>
+
+    <FluentButton Disabled=@(SelectedRobot.IsEmpty || IsRunning) IconStart="@(new Icons.Regular.Size16.Delete().WithColor(Color.Error))">Remove</FluentButton>
+</FluentStack>
+
+@code {
+
+	private RobotInfo[] Robots { get; set; } = [];
+
+	private RobotInfo SelectedRobot { get; set; }
 
 	private (int x, int y, Core.Level.Tile tile)[] Stones { get; set; } = [];
 
-	private bool IsRunning { get; set; } = false;
+	private bool IsRunning = false;
 
-	private string HeatStyle { get; set; } = string.Empty;
+	private bool DisplayHeatmap = false;
+
+	private string HeatStyle = string.Empty;
 
 	CancellationTokenSource cts = new();
 
@@ -63,7 +97,7 @@
 			// make sure we are running in the UI sync context
 			await InvokeAsync(() =>
 			{
-				Positions = positions;
+				Robots = positions;
 
 				if (map != null)
 					Stones = map;
@@ -87,7 +121,8 @@
 			});
 	}
 
-	private string RGBScale(float value, float min = 0, float max = 1)
+	// TODO: this is ugly af
+	string RGBScale(float value, float min = 0, float max = 1)
 	{
 		var ratio = 2 * (value - min) / (max - min);
 		var b = (int)Math.Max(0, 255 * (1 - ratio));
@@ -96,11 +131,15 @@
 		return $"rgb({r}, {g}, {b})";
 	}
 
+	#region	Event handlers
+
 	private async Task Stop() => await cts.CancelAsync();
 
-	// ---------- 
-
-	private bool DisplayHeatmap = false;
+	private void Reset()
+	{
+		Stones = Robot.Cleanup();
+		StateHasChanged();
+	}
 
 	private async Task OnLevelSelected(string levelName)
 	{
@@ -115,5 +154,65 @@
 		HeatStyle = string.Join("\n", level.EnumerateHeat().Select((a) => $".tile.x{a.x}.y{a.y} {{ background-color: {RGBScale(a.h, max: 700f)} !important; }}"));
 		StateHasChanged();
 	}
+
+	/// <summary>
+	/// Try to set SelectedRobot
+	/// </summary>
+	/// <returns>false if there are no robots</returns>
+	private bool EnsureSelectedRobot()
+	{
+		if (Robots.Length == 0) return false; // ignore click
+													// FluentSelect will not set bound SelectedRobot if there is only one option, so we have to do it manually
+		if(SelectedRobot.IsEmpty)
+			SelectedRobot = Robots[0]!;
+
+		return true;
+	}
+
+	private void HandleLevelClick(Level.CoordinateEventArgs e)
+	{
+		if (EnsureSelectedRobot())
+		{
+			// update & re-render
+			Robots = Robot.PlaceAt(SelectedRobot.Name, e.x, e.y);
+			StateHasChanged();
+		}
+	}
+
+	private void Move(RelativeDirection direction)
+	{
+		if(EnsureSelectedRobot())
+		{
+			Robots = Robot.Move(SelectedRobot.Name, direction);
+			StateHasChanged();
+		}
+	}
+
+	private void Step() => Move(RelativeDirection.Forward);
+	private void TurnRight() => Move(RelativeDirection.Right);
+	private void TurnLeft() => Move(RelativeDirection.Left);
+
+	private async Task OpenModalAsync()
+	{
+		var record = new KareszModal.KareszData();
+		var dialog = await DialogService.ShowDialogAsync<KareszModal>(record, new DialogParameters()
+            {
+                Title = $"Create new robot",
+                PreventDismissOnOverlayClick = false,
+                PreventScroll = true,
+            });
+
+		var result = await dialog.Result;
+		if (!result.Cancelled && result.Data != null)
+		{
+			record = (KareszModal.KareszData)result.Data;
+			Console.WriteLine(record);
+
+			Robots = Robot.Create(record);
+			StateHasChanged();
+		}
+    }
+
+	#endregion
 }
 

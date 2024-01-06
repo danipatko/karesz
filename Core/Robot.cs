@@ -20,6 +20,10 @@ namespace karesz.Core
         private Position CurrentPosition = new(0, 0);
         private Position ProposedPosition = new(0, 0);
 
+        /// <summary>
+        /// !IMPORTANT! Only set Position when game is running
+        /// The real position is CurrentPosition, and will be only updated after a game round
+        /// </summary>
         private Position Position
         {
             get => CurrentPosition;

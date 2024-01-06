@@ -6,6 +6,7 @@
     aspect-ratio: 1;
     width: var(--tile-size);
     height: var(--tile-size);
+    pointer-events: none;
 }
 
 .stone.Wall {

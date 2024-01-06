@@ -19,3 +19,7 @@
     height: 100%;
     aspect-ratio: 1;
 }
+
+.robot.True {
+    background-color: red;
+}

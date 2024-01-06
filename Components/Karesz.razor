@@ -1,5 +1,8 @@
-﻿
-<div id="@Name" class="robot" style="--rotation: @((int)Position.Rotation); --offset-x: @(Position.Vector.x); --offset-y: @(Position.Vector.y)">
+﻿<div id="@Name" 
+	 tabindex="-1" 
+	 role="button" 
+	 class="robot @(IsSelected ? "selected" : string.Empty)" 
+	 style="--rotation: @((int)Position.Rotation); --offset-x: @(Position.Vector.x); --offset-y: @(Position.Vector.y)">
 	<img src="/sprites/karesz.png" />
 </div>
 
@@ -17,4 +20,7 @@
 
 	[Parameter]
 	public string Name { get; set; } = "Karesz";
+
+	[Parameter]
+	public bool IsSelected { get; set; } = false;
 }

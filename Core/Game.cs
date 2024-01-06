@@ -1,5 +1,7 @@
 ﻿using Microsoft.VisualStudio.Threading;
 using karesz.Runner;
+using Microsoft.FluentUI.AspNetCore.Components.DesignTokens;
+using karesz.Components;
 
 namespace karesz.Core
 {
@@ -48,11 +50,13 @@ namespace karesz.Core
     }
 
     // basic utility class because we don't want to expose robot instance position
-    public struct RobotInfo(string name, Position position)
+    public struct RobotInfo(string Name, Position Position)
     {
-        public string Name { get; set; } = name;
-        public Position Position { get; set; } = position;
-    }
+        public string Name { get; set; } = Name;
+        public Position Position { get; set; } = Position;
+        public readonly bool IsEmpty { get => string.IsNullOrEmpty(Name); }
+		public readonly override string ToString() => $"'{Name}' at {Position}";
+	}
 
     // "multiplayer"
     public partial class Robot
@@ -69,6 +73,7 @@ namespace karesz.Core
 
         public static Level CurrentLevel { get; set; } = Level.Default;
 
+		private static bool IsRunning = false;
 		private static bool DidChangeMap = false;
 		private static int TickCount = 0;
 
@@ -79,10 +84,12 @@ namespace karesz.Core
         // current state for rendering
         private static RobotInfo[] StatusQuo { get => Robots.Values.Select(x => new RobotInfo(x.Név, x.Position)).ToArray(); }
 
-		#endregion
+        #endregion
 
-		// throws an exception if name is not present in dictionary
-		public static Robot Get(string név) => Robots[név]!;
+        #region Robot utils
+
+        // throws an exception if name is not present in dictionary
+        public static Robot Get(string név) => Robots[név]!;
 
         public static Robot Create(string név, int startX = 0, int startY = 0, Direction startRotation = Direction.Up)
 		{
@@ -93,27 +100,58 @@ namespace karesz.Core
                 return robot;
 			}
 
-			var r = new Robot(név) {
-				Position = new Position(startX, startY, startRotation)
-			};
-			Robots.Add(név, r);
+			var r = new Robot(név) { CurrentPosition = new Position(startX, startY, startRotation) };
+            Console.WriteLine(r);
+            
+            Robots.Add(név, r);
 			return r;
 		}
 
-        public static void Displace(string name, int x, int y)
+        /// <summary>
+        /// Overload for modal result
+        /// </summary>
+        public static RobotInfo[] Create(KareszModal.KareszData record)
         {
-            if(Robots.TryGetValue(name, out var robot))
-            {
-                robot.Position = new Position(x, y);
-            }
+            Console.WriteLine("Create overload {0}", record);
+            Create(record.Name, record.X, record.Y, record.Direction);
+            return StatusQuo;
         }
 
-        #region Game lifecycle
-
         /// <summary>
-        /// List all robot objects that are about to die in this round
+        /// Sets the position of a robot, by name
+        /// won't take effect while game is running
         /// </summary>
-        private static IEnumerable<string> RobotsToExecute()
+        public static RobotInfo[] PlaceAt(string name, int x, int y)
+        {
+            // invalid call
+            if (IsRunning)
+                return StatusQuo;
+            
+            if (Robots.TryGetValue(name, out var robot))
+                robot.CurrentPosition.Vector = new Vector(x, y);
+
+            return StatusQuo;
+        }
+
+        public static RobotInfo[] Move(string name, RelativeDirection direction = RelativeDirection.Right)
+        {
+			if (IsRunning)
+				return StatusQuo;
+
+            if (Robots.TryGetValue(name, out var robot))
+                robot.CurrentPosition += direction;
+
+			return StatusQuo;
+		}
+
+		#endregion
+
+		#region Game lifecycle
+
+		/// <summary>
+		/// List all robot objects that are about to die in this round
+		/// </summary>
+		private static IEnumerable<string> RobotsToExecute()
         {
             foreach (var robot in Robots.Values)
             {
@@ -244,13 +282,15 @@ namespace karesz.Core
         /// Resets tick counter, removes all rocks placed in the run.
         /// If removeRobots is true, every player's robot will be deleted.
         /// </summary>
-        public static void Cleanup(bool removeRobots = false)
+        public static (int x, int y, Level.Tile tile)[] Cleanup(bool removeRobots = false)
 		{
 			if (removeRobots)
 				Robots.Clear();
 
 			CurrentLevel.Reset();
 			TickCount = 0;
+
+			return CurrentLevel.Enumerate().ToArray();
 		}
 
 		#endregion
