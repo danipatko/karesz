@@ -21,7 +21,7 @@ namespace karesz.Core
             Water = 8,
         }
 
-		protected Tile[,] Map;
+        protected Tile[,] Map;
         protected int[,] HeatMap;
 
         public string LevelName = string.Empty;
@@ -38,7 +38,7 @@ namespace karesz.Core
             MapHeat();
         }
 
-		public Tile this[int x, int y]
+        public Tile this[int x, int y]
         {
             get => InBounds(x, y) ? Map[x, y] : Tile.None;
             set

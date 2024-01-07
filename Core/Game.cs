@@ -1,7 +1,6 @@
 ﻿using Microsoft.VisualStudio.Threading;
-using karesz.Runner;
-using Microsoft.FluentUI.AspNetCore.Components.DesignTokens;
 using karesz.Components;
+using karesz.Runner;
 
 namespace karesz.Core
 {
@@ -49,21 +48,28 @@ namespace karesz.Core
 		}
     }
 
-    // basic utility class because we don't want to expose robot instance position
-    public struct RobotInfo(string Name, Position Position)
-    {
-        public string Name { get; set; } = Name;
-        public Position Position { get; set; } = Position;
-        public readonly bool IsEmpty { get => string.IsNullOrEmpty(Name); }
+	// basic utility class because we don't want to expose robot instance position
+	public struct RobotInfo(string Name, Position Position)
+	{
+		public string Name { get; set; } = Name;
+		public Position Position { get; set; } = Position;
+		public readonly bool IsEmpty { get => string.IsNullOrEmpty(Name); }
 		public readonly override string ToString() => $"'{Name}' at {Position}";
 	}
 
-    // "multiplayer"
-    public partial class Robot
+	public record RenderUpdate(RobotInfo[] Robots, Position[]? Projectiles = null, (int x, int y, Level.Tile tile)[]? Tiles = null)
+	{
+		public RobotInfo[] Robots { get; set; } = Robots;
+		public Position[]? Projectiles { get; set; } = Projectiles;
+		public (int x, int y, Level.Tile tile)[]? Tiles { get; set; } = Tiles;
+	}
+
+	// "multiplayer"
+	public partial class Robot
     {
         #region Params
 
-        public delegate Task RenderCallback(RobotInfo[] positions, (int x, int y, Level.Tile tile)[]? tiles);
+        public delegate Task RenderCallback(RenderUpdate data);
 
 		// TODO: move to settings
 		private const int TICK_INTERVAL = 50; // ms
@@ -73,23 +79,28 @@ namespace karesz.Core
 
         public static Level CurrentLevel { get; set; } = Level.Default;
 
-		private static bool IsRunning = false;
+		public static bool IsRunning { get; private set; } = false;
 		private static bool DidChangeMap = false;
 		private static int TickCount = 0;
 
         // used for signalling & waiting
         private static readonly AsyncManualResetEvent resetEvent = new(false);
 		private static CancellationToken CancellationToken = CancellationToken.None;
-		
-        // current state for rendering
-        private static RobotInfo[] StatusQuo { get => Robots.Values.Select(x => new RobotInfo(x.Név, x.Position)).ToArray(); }
 
-        #endregion
+		#endregion
 
-        #region Robot utils
+		#region State getters
 
-        // throws an exception if name is not present in dictionary
-        public static Robot Get(string név) => Robots[név]!;
+		private static RobotInfo[] StatusQuo { get => Robots.Values.Select(x => new RobotInfo(x.Név, x.Position)).ToArray(); }
+		private static (int x, int y, Level.Tile tile)[]? Tiles { get => DidChangeMap ? CurrentLevel.Enumerate().ToArray() : null; }
+		private static RenderUpdate State { get => new(StatusQuo, Projectile.Shots, Tiles); }
+
+		#endregion
+
+		#region Robot utils
+
+		// throws an exception if name is not present in dictionary
+		public static Robot Get(string név) => Robots[név]!;
 
         public static Robot Create(string név, int startX = 0, int startY = 0, Direction startRotation = Direction.Up)
 		{
@@ -112,7 +123,6 @@ namespace karesz.Core
         /// </summary>
         public static RobotInfo[] Create(KareszModal.KareszData record)
         {
-            Console.WriteLine("Create overload {0}", record);
             Create(record.Name, record.X, record.Y, record.Direction);
             return StatusQuo;
         }
@@ -123,11 +133,7 @@ namespace karesz.Core
         /// </summary>
         public static RobotInfo[] PlaceAt(string name, int x, int y)
         {
-            // invalid call
-            if (IsRunning)
-                return StatusQuo;
-            
-            if (Robots.TryGetValue(name, out var robot))
+            if (!IsRunning && Robots.TryGetValue(name, out var robot))
                 robot.CurrentPosition.Vector = new Vector(x, y);
 
             return StatusQuo;
@@ -135,12 +141,17 @@ namespace karesz.Core
 
         public static RobotInfo[] Move(string name, RelativeDirection direction = RelativeDirection.Right)
         {
-			if (IsRunning)
-				return StatusQuo;
-
-            if (Robots.TryGetValue(name, out var robot))
+			if (!IsRunning && Robots.TryGetValue(name, out var robot))
                 robot.CurrentPosition += direction;
 
+			return StatusQuo;
+		}
+
+        public static RobotInfo[] Delete(string name)
+        {
+            if (!IsRunning)
+                Robots.Remove(name);
+			
 			return StatusQuo;
 		}
 
@@ -167,7 +178,7 @@ namespace karesz.Core
                     || (robot.ProposedPosition.Vector == other.Position.Vector && other.ProposedPosition.Vector == robot.Position.Vector))))
                     yield return robot.Név;
                 // hit by projectile
-                if (Projectile.Projectiles.Any(x => x.CurrentPosition.Vector == robot.ProposedPosition.Vector))
+                if (Projectile.IsHit(robot.ProposedPosition))
                     yield return robot.Név;
             }
         }
@@ -184,7 +195,7 @@ namespace karesz.Core
 			foreach (string name in RobotsToExecute().Distinct())
 			{
 				Kill(name);
-				Output.WriteLine($"[{name}] died");
+				Console.WriteLine($"[{name}] died");
 			}
 
 			// step survivors
@@ -194,7 +205,6 @@ namespace karesz.Core
 			TickCount++;
 		}
 
-
         /// <summary>
         /// Runs the entire game...
         /// </summary>
@@ -203,8 +213,8 @@ namespace karesz.Core
         /// <param name="cancellationToken"></param>
 		public static async Task RunAsync(RenderCallback render, bool autoCleanup = false, CancellationToken cancellationToken = default)
         {
-			// render before start
-            await render.Invoke(StatusQuo, CurrentLevel.Enumerate().ToArray());
+            IsRunning = true;
+			await render.Invoke(State); // render before start
 
 			var cts = new CancellationTokenSource();
             // create a combined token so token can be cancelled after the while loop
@@ -214,22 +224,31 @@ namespace karesz.Core
             // if the task is blocking at a resetEvent.WaitOne() call, the task will run indefinitely
             CancellationToken = cct.Token;
 
-            // run cleanup on cancel
-			if (autoCleanup)
-            {
-				CancellationToken.Register(() =>
-                {
-					Cleanup();
-                    _ = render.Invoke(StatusQuo, CurrentLevel.Enumerate().ToArray());
-                });
-            }
+			List<Task> runningTasks = [];
+			foreach (var robot in Robots.Values)
+			{
+				var task = Task.Run(robot.FeladatAsync.Invoke, cct.Token);
+				runningTasks.Add(task);
+			}
 
-		    List<Task> runningTasks = [];
-            foreach (var robot in Robots.Values)
-            {
-                var task = Task.Run(robot.FeladatAsync.Invoke, cct.Token);
-                runningTasks.Add(task);
-            }
+			// run cleanup on cancel
+			CancellationToken.Register(() =>
+			{
+				foreach (var item in runningTasks)
+				{
+					if (item.Status != TaskStatus.WaitingForActivation)
+						item.Dispose();
+					else
+						Console.Error.WriteLine("A task is still running... well fuck");
+				}
+
+				IsRunning = false;
+				if (autoCleanup)
+					Cleanup();
+
+				DidChangeMap = true; // force re-render map
+				_ = render.Invoke(State);
+			});
 
             while (!CancellationToken.IsCancellationRequested && Robots.Count > 0)
             {
@@ -243,7 +262,7 @@ namespace karesz.Core
                 MakeRound();
 
 				// trigger UI render
-				await render.Invoke(StatusQuo, DidChangeMap ? CurrentLevel.Enumerate().ToArray() : null);
+				await render.Invoke(State);
 				DidChangeMap = false;
 
 				// unblock Tick() calls
@@ -259,14 +278,6 @@ namespace karesz.Core
 			// still need to cancel
 			if (!CancellationToken.IsCancellationRequested)
                 await cts.CancelAsync();
-
-			foreach (var item in runningTasks)
-            {
-                if (item.Status != TaskStatus.WaitingForActivation)
-                    item.Dispose();
-                else
-                    await Console.Error.WriteLineAsync("A task is still running... well fuck");
-            }
 		}
 
         /// <summary>
@@ -275,7 +286,10 @@ namespace karesz.Core
 		private static void Kill(string name)
 		{
 			if (Robots.Remove(name, out var robot))
+			{
 				CurrentLevel[robot.Position.Vector] = Level.Tile.Black;
+                Console.WriteLine("placing raah {0}", robot.Position.Vector);
+            }
 		}
 
 		/// <summary>
@@ -288,6 +302,7 @@ namespace karesz.Core
 				Robots.Clear();
 
 			CurrentLevel.Reset();
+            Projectile.Clear();
 			TickCount = 0;
 
 			return CurrentLevel.Enumerate().ToArray();

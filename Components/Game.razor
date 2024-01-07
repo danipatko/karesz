@@ -6,24 +6,24 @@
 <FluentStack HorizontalGap="20" Style="padding: 1rem; padding-bottom: 0;" VerticalAlignment="VerticalAlignment.Center">
 	<FluentButton IconStart="@(new Icons.Filled.Size20.CaretRight())"
 				  Appearance="Appearance.Accent"
-				  Loading="@IsRunning"
+				  Loading="@Robot.IsRunning"
 				  OnClick="@Run">
 		Compile and Run
 	</FluentButton>
 	<FluentButton IconStart="@(new Icons.Filled.Size16.CheckboxUnchecked().WithColor(Color.Error))"
 				  Appearance="Appearance.Neutral"
-				  Disabled="@(!IsRunning)"
+				  Disabled="@(!Robot.IsRunning)"
 				  OnClick="@Stop">
 		Stop
 	</FluentButton>
 
 	<FluentDivider Style="height: 30px;" Role="DividerRole.Presentation" Orientation="Orientation.Vertical"></FluentDivider>
 
-	<FluentSelect Height="50vh" TOption="string" Items=@Core.Level.LEVEL_NAMES SelectedOptionChanged="@OnLevelSelected" Value=@(Core.Robot.CurrentLevel.LevelName) /> 
+	<FluentSelect Disabled=@Robot.IsRunning Height="50vh" TOption="string" Items=@Core.Level.LEVEL_NAMES SelectedOptionChanged="@OnLevelSelected" Value=@(Core.Robot.CurrentLevel.LevelName) /> 
 
 	<FluentSwitch @bind-Value="@DisplayHeatmap">Heatmap</FluentSwitch>
 
-    <FluentButton @onclick=@Reset IconStart="@(new Icons.Regular.Size16.ArrowUndo())">Reset level</FluentButton>
+    <FluentButton Disabled=@Robot.IsRunning @onclick=@Reset IconStart="@(new Icons.Regular.Size16.ArrowUndo())">Reset level</FluentButton>
 </FluentStack>
 
 @* stuff *@
@@ -31,15 +31,20 @@
 	<style> @(DisplayHeatmap ? HeatStyle : string.Empty) </style>
 	<div class="game-container" style="--tile-size: 20px; /*calc((100% - 2rem) / 41);*/">
 		<Level OnClick=@HandleLevelClick />
-
+		@* players *@
 		@foreach (var item in Robots)
 		{
 			<Karesz IsSelected=@(SelectedRobot.Name == item.Name)
 					Position=@item.Position 
 					Name=@item.Name />
 		}
-
-		@foreach ((int x, int y, Core.Level.Tile tile) in Stones)
+		@* projectiles *@
+		@foreach (var item in Projectiles)
+		{
+			<Golyesz Position=@item />
+		}
+		@* objects on the map *@
+		@foreach ((int x, int y, Core.Level.Tile tile) in Tiles)
 		{
 			<Stone X=@x Y=@y Tile=@tile />
 		}
@@ -49,7 +54,7 @@
 @* robot controls  *@
 
 <FluentStack HorizontalGap="10" Style="padding: 1rem; padding-top: 0;" VerticalAlignment="VerticalAlignment.Center">
-    <FluentButton @onclick=@OpenModalAsync Disabled=@IsRunning IconStart="@(new Icons.Filled.Size16.Add())">New Robot</FluentButton>
+    <FluentButton @onclick=@OpenModalAsync Disabled=@Robot.IsRunning IconStart="@(new Icons.Filled.Size16.Add())">New Robot</FluentButton>
 
 	<FluentDivider Style="height: 30px; margin: 0 1rem;" Role="DividerRole.Presentation" Orientation="Orientation.Vertical"></FluentDivider>
 
@@ -57,31 +62,31 @@
 
 	<FluentSelect
 		Appearance="Appearance.Outline"
-		Disabled=@IsRunning
+		Disabled=@Robot.IsRunning
 		Multiple="false" 
 		TOption="RobotInfo" 
 		Items=@Robots 
 		OptionText=@(x => x.Name) 
 		@bind-SelectedOption="@SelectedRobot" />
 
-    <FluentButton @onclick=@TurnLeft Disabled=@(SelectedRobot.IsEmpty || IsRunning) IconStart="@(new Icons.Filled.Size16.ArrowUpLeft())">Turn left</FluentButton>
-    <FluentButton @onclick=@Step Disabled=@(SelectedRobot.IsEmpty || IsRunning) IconStart="@(new Icons.Filled.Size16.ArrowUp())">Step</FluentButton>
-    <FluentButton @onclick=@TurnRight Disabled=@(SelectedRobot.IsEmpty || IsRunning) IconStart="@(new Icons.Filled.Size16.ArrowUpRight())">Turn right</FluentButton>
+    <FluentButton @onclick=@TurnLeft Disabled=@(SelectedRobot.IsEmpty || Robot.IsRunning) IconStart="@(new Icons.Filled.Size16.ArrowUpLeft())">Turn left</FluentButton>
+    <FluentButton @onclick=@Step Disabled=@(SelectedRobot.IsEmpty || Robot.IsRunning) IconStart="@(new Icons.Filled.Size16.ArrowUp())">Step</FluentButton>
+    <FluentButton @onclick=@TurnRight Disabled=@(SelectedRobot.IsEmpty || Robot.IsRunning) IconStart="@(new Icons.Filled.Size16.ArrowUpRight())">Turn right</FluentButton>
 
 	<FluentDivider Style="height: 30px; margin: 0 0.5rem;" Role="DividerRole.Presentation" Orientation="Orientation.Vertical"></FluentDivider>
 
-    <FluentButton Disabled=@(SelectedRobot.IsEmpty || IsRunning) IconStart="@(new Icons.Regular.Size16.Delete().WithColor(Color.Error))">Remove</FluentButton>
+    <FluentButton @onclick=@RemoveHandler Disabled=@(SelectedRobot.IsEmpty || Robot.IsRunning) IconStart="@(new Icons.Regular.Size16.Delete().WithColor(Color.Error))">Remove</FluentButton>
 </FluentStack>
 
 @code {
 
 	private RobotInfo[] Robots { get; set; } = [];
 
+	private Position[] Projectiles { get; set; } = [];
+
 	private RobotInfo SelectedRobot { get; set; }
 
-	private (int x, int y, Core.Level.Tile tile)[] Stones { get; set; } = [];
-
-	private bool IsRunning = false;
+	private (int x, int y, Core.Level.Tile tile)[] Tiles { get; set; } = [];
 
 	private bool DisplayHeatmap = false;
 
@@ -92,15 +97,18 @@
 	protected override void OnInitialized()
 	{
 		// register game renderer
-		Core.Game.RenderFunction = async delegate (RobotInfo[] positions, (int x, int y, Core.Level.Tile tile)[]? map)
+		Core.Game.RenderFunction = async delegate (RenderUpdate data)
 		{
 			// make sure we are running in the UI sync context
 			await InvokeAsync(() =>
 			{
-				Robots = positions;
+				Robots = data.Robots;
 
-				if (map != null)
-					Stones = map;
+				if (data.Tiles != null)
+					Tiles = data.Tiles;
+
+				if (data.Projectiles != null)
+					Projectiles = data.Projectiles;
 
 				StateHasChanged();
 			});
@@ -110,15 +118,7 @@
 	private async Task Run()
 	{
 		cts = new();
-		IsRunning = true;
-
-		await Core.Game.StartAsync(cts.Token)
-			.ContinueWith(_ =>
-			{
-				IsRunning = false;
-				Console.WriteLine(Output.Content);
-				Output.Flush();
-			});
+		await Core.Game.StartAsync(cts.Token);
 	}
 
 	// TODO: this is ugly af
@@ -137,7 +137,8 @@
 
 	private void Reset()
 	{
-		Stones = Robot.Cleanup();
+		Tiles = Robot.Cleanup();
+		Projectiles = [];
 		StateHasChanged();
 	}
 
@@ -150,7 +151,7 @@
 			return;
 		}
 
-		Stones = level.Enumerate().ToArray();
+		Tiles = level.Enumerate().ToArray();
 		HeatStyle = string.Join("\n", level.EnumerateHeat().Select((a) => $".tile.x{a.x}.y{a.y} {{ background-color: {RGBScale(a.h, max: 700f)} !important; }}"));
 		StateHasChanged();
 	}
@@ -211,7 +212,16 @@
 			Robots = Robot.Create(record);
 			StateHasChanged();
 		}
-    }
+	}
+
+	private void RemoveHandler()
+	{
+		if(!SelectedRobot.IsEmpty)
+		{
+			Robots = Robot.Delete(SelectedRobot.Name);
+			StateHasChanged();
+		}
+	}
 
 	#endregion
 }
