@@ -21,6 +21,11 @@ namespace karesz.Core
         private Position ProposedPosition = new(0, 0);
 
         /// <summary>
+        /// if true, karesz will log function calls to ease debugging (no debugger in browser :c)
+        /// </summary>
+        public bool Debug { get; set; } = false;
+
+        /// <summary>
         /// !IMPORTANT! Only set Position when game is running
         /// The real position is CurrentPosition, and will be only updated after a game round
         /// </summary>
@@ -49,11 +54,7 @@ namespace karesz.Core
 
         #region Instance methods
 
-        private void Say(string message)
-        {
-            Console.WriteLine($"[{Név}]: {message}");
-            // TODO: create event so message can be shown in frontend aswell
-        }
+        private void Say(string message) => Console.WriteLine($"[{Név}] {message}");
 
         private static async Task Tick()
         {
@@ -77,6 +78,7 @@ namespace karesz.Core
         public void Teleport(int x, int y)
         {
             Position = new(x, y, CurrentPosition.Rotation);
+            if(Debug) Mondd($"Teleport {ProposedPosition.Vector}");
         }
 
         public async Task TeleportAsync(int x, int y)
@@ -91,7 +93,7 @@ namespace karesz.Core
         public void Lépj()
         {
 			Position += RelativeDirection.Forward;
-			//Say($"lépj ide {ProposedPosition}"); // DEBUG
+            if (Debug) Say($"Lépés ide {ProposedPosition.Vector}");
         }
 
         public async Task LépjAsync()
@@ -112,9 +114,11 @@ namespace karesz.Core
                 1 => RelativeDirection.Right,
                 _ => throw new Exception($"A megadott forgásirány ({forgásirány}) érvénytelen! A forgásirány értéke -1 (balra) vagy 1 (jobbra) lehet.")
             };
-        }
 
-        public async Task ForduljAsync(int forgásirány)
+			if (Debug) Say($"{(forgásirány == -1 ? "Balra" : "Jobbra")} fordulok => {Position.DisplayDirection(ProposedPosition.Rotation)} felé nézek");
+		}
+
+		public async Task ForduljAsync(int forgásirány)
         {
             Fordulj(forgásirány);
             await Tick();
@@ -131,7 +135,7 @@ namespace karesz.Core
         /// <param name="szín"></param>
         public void Tegyél_le_egy_kavicsot(int szín = Karesz.Form.fekete)
         {
-			//Say($"kavics ide {CurrentPosition.Vector}"); // DEBUG
+			if (Debug) Say($"Leteszek egy {szín} kavicsot ide {CurrentPosition.Vector} - még {Stones[szín - 2]}db maradt");
 
 			if (CurrentLevel[CurrentPosition.Vector] != Level.Tile.Empty)
             {
@@ -149,6 +153,7 @@ namespace karesz.Core
             Stones[szín - 2]--;
 
             DidChangeMap = true;
+
         }
 
         public async Task Tegyél_le_egy_kavicsotAsync(int szín = Karesz.Form.fekete)
@@ -173,6 +178,8 @@ namespace karesz.Core
             CurrentLevel[CurrentPosition.Vector] = Level.Tile.Empty;
 
 			DidChangeMap = true;
+
+			if (Debug) Say($"Felveszek egy kavicsot innen {CurrentPosition.Vector} - már {Stones[(int)tileUnder - 2]}db van");
 		}
 
 		public async Task Vegyél_fel_egy_kavicsotAsync()
@@ -183,7 +190,9 @@ namespace karesz.Core
 
         public void Lőjj()
         {
-            if(Stones[(int)Level.Tile.Snow - 2] <= 0)
+			if (Debug) Say($"Lövés {Position.DisplayDirection(ProposedPosition.Rotation)} felé");
+
+			if (Stones[(int)Level.Tile.Snow - 2] <= 0)
             {
                 Stones[(int)Level.Tile.Snow - 2]--;
 				Projectile.Shoot(CurrentPosition + RelativeDirection.Forward, this);

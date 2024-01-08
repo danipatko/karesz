@@ -8,16 +8,14 @@
         <Editor />
     </Panel1>
     <Panel2>
-        <Game />
+        <div style="height: 100%; display: flex; flex-direction: column;">
+            <div>
+                <Game />
+            </div>
+            <div style="flex-grow: 1; flex: 1; overflow-y: auto;">
+                <Logs />
+            </div>
+        </div>
     </Panel2>
 </FluentSplitter>
 
-@code {
-    [Inject] public HttpClient HttpClient { get; set; }
-
-    async Task Run()
-    {
-        // var level = await Level.LoadAsync(HttpClient, "v0.txt");
-        // Console.WriteLine(level!.ToHeatString());
-    }
-}

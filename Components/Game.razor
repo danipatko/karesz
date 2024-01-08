@@ -77,6 +77,7 @@
     <FluentButton @onclick=@RemoveHandler Disabled=@(SelectedRobot.IsEmpty || Robot.IsRunning) IconStart="@(new Icons.Regular.Size16.Delete().WithColor(Color.Error))">Remove</FluentButton>
 </FluentStack>
 
+
 @code {
 
 	private RobotInfo[] Robots { get; set; } = [];
@@ -214,8 +215,6 @@
 		if (!result.Cancelled && result.Data != null)
 		{
 			record = (KareszModal.KareszData)result.Data;
-			Console.WriteLine(record);
-
 			Robots = Robot.Create(record);
 			StateHasChanged();
 		}

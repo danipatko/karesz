@@ -18,14 +18,14 @@ namespace karesz.Core
 
             Robot.Cleanup();
 
-			// await Output.StartCaptureAsync();
-            Output.WriteLine("--- CONSOLE OUTPUT ---");
+			await Output.StartCaptureAsync();
+			Console.WriteLine("--- CONSOLE OUTPUT ---");
 
             var result = await CompilerSerivce.CompileAsync(WorkspaceService.Code, CompilerSerivce.CompilationMode.Async, cancellationToken);
             if(!result.Success)
             {
-				Output.WriteLine("--- COMPILATION FAILED ---");
-				Output.WriteLine(string.Join("\n", result.Diagnostics.Select(DiagnosticsProvider.FmtMessage)));
+				Console.WriteLine("--- COMPILATION FAILED ---");
+				Console.WriteLine(string.Join("\n", result.Diagnostics.Select(DiagnosticsProvider.FmtMessage)));
 				await Output.ResetCaptureAsync();
 				return;
             }
@@ -33,25 +33,19 @@ namespace karesz.Core
             var invokeSuccess = CompilerSerivce.LoadAndInvoke(); // will write error to stdout
             if(!invokeSuccess)
             {
-				Output.WriteLine($"--- INVOKE FAILED ---");
+				Console.WriteLine($"--- INVOKE FAILED ---");
 				await Output.ResetCaptureAsync();
 				return;
 			}
 
-			Output.WriteLine("--- INVOKE FINISHED ---");
+			Console.WriteLine("--- INVOKE FINISHED ---");
 
-			try
-			{
-	            await Robot.RunAsync(RenderFunction, autoCleanup: false, cancellationToken: cancellationToken);
-			}
-			catch (Exception e)
-			{
-				await Console.Error.WriteLineAsync(e.Message);
-			}
-
-			Output.WriteLine("--- GAME ENDED ---");
-
-			// await Output.ResetCaptureAsync();
+			await Robot.RunAsync(RenderFunction, autoCleanup: false, cancellationToken: cancellationToken)
+				.ContinueWith(async (_) =>
+				{
+					Console.WriteLine("--- GAME ENDED ---");
+					await Output.ResetCaptureAsync();
+				}, TaskScheduler.Default);
 		}
     }
 
@@ -294,10 +288,7 @@ namespace karesz.Core
 		private static void Kill(string name)
 		{
 			if (Robots.Remove(name, out var robot))
-			{
 				CurrentLevel[robot.Position.Vector] = Level.Tile.Black;
-                Console.WriteLine("placing raah {0}", robot.Position.Vector);
-            }
 		}
 
 		/// <summary>

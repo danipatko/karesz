@@ -104,5 +104,13 @@
 
         public readonly override string ToString() => $"position:{Vector} rotation:{Rotation}";
 
+        public static string DisplayDirection(Direction direction) => direction switch
+        {
+            Direction.Up => "észak",
+            Direction.Right => "kelet",
+            Direction.Down => "dél",
+            Direction.Left => "nyugat",
+            _ => throw new Exception("Invalid direction enum")
+        };
     }
 }

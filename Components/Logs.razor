@@ -1,0 +1,18 @@
+﻿<div class="logs">
+	<code>
+		@Content
+	</code>
+</div>
+
+@code {
+	string Content { get; set; } = string.Empty;
+
+	protected override void OnInitialized()
+	{
+		Output.FlushHandler = (object sender, EventArgs _) =>
+		{
+			Content = sender.ToString()!;
+			StateHasChanged();
+		};
+	}
+}

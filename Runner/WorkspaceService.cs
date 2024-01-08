@@ -106,8 +106,11 @@ namespace {nameof(Karesz)}
         public void {Preprocess.DIÁK_ROBOTJAI}()
         {{
             var karesz = Robot.Get(""Karesz"");
+            karesz.Debug = true;
+            Console.WriteLine(""/// TESTING /// invoke"");
 
             karesz.Feladat = delegate () {{
+                Console.WriteLine(""/// TESTING /// deleg8"");
                 karesz.Fordulj(jobbra);
 
                 while(!karesz.Ki_fog_lépni_a_pályáról()) {{
