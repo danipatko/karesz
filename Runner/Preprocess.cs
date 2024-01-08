@@ -29,7 +29,8 @@ namespace karesz.Runner
         private const string AWAIT_PREFIX = "await ";
         private const string AWAIT_SUFFIX = "Async";
         public const string DIAK_ROBOTJAI = nameof(DIAK_ROBOTJAI);
-
+		public const string DIÁK_ROBOTJAI = nameof(DIÁK_ROBOTJAI);
+		
         public static string Asyncronize(string code)
         {
             if (!UsingTasksRe().IsMatch(code))

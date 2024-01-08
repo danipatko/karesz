@@ -8,7 +8,7 @@ namespace karesz.Core
     {
         public delegate Task FeladatAction();
 
-		private static int[] DEFAULT_STONES { get => new int[] { 100, 100, 100, 100, 100, 100, 100, 100 }; }
+		private static int[] DEFAULT_STONES { get => new int[] { 100, 100, 100, 100, 100 }; }
 
 		#region Instance Properties
 
@@ -181,8 +181,16 @@ namespace karesz.Core
             await Tick();
         }
 
-        public void Lőjj() =>
-            Projectile.Shoot(CurrentPosition + RelativeDirection.Forward, this);
+        public void Lőjj()
+        {
+            if(Stones[(int)Level.Tile.Snow - 2] <= 0)
+            {
+                Stones[(int)Level.Tile.Snow - 2]--;
+				Projectile.Shoot(CurrentPosition + RelativeDirection.Forward, this);
+            }
+            else
+                Say("Nincsen nálam hó!");
+        }
 
         public async Task LőjjAsync()
         {

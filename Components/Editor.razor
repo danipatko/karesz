@@ -35,15 +35,14 @@
 
     public IEnumerable<DiagnosticsProvider.Issue> Issues { get; set; } = [];
 
-    protected override void OnAfterRender(bool firstRender)
-    {
-        if (firstRender)
-        {
-            dotnetObjRef = DotNetObjectReference.Create(this);
-            this.JsRuntime.InvokeVoid("Editor.create", EditorId, WorkspaceService.DEFAULT_TEMPLATE, dotnetObjRef);
-        }
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "code")]
+    public string? defaultCode { get; set; }
 
-        base.OnAfterRender(firstRender);
+    protected override void OnInitialized()
+    {
+        dotnetObjRef = DotNetObjectReference.Create(this);
+        this.JsRuntime.InvokeVoid("Editor.create", EditorId, defaultCode ?? WorkspaceService.DEFAULT_TEMPLATE, dotnetObjRef);
     }
 
     [JSInvokable]

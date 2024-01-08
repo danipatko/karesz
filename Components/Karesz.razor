@@ -11,7 +11,11 @@
 			   MaxWidth="400px"
 			   UseTooltipService="false"
 			   Position="TooltipPosition.Bottom">
-	@Name at @(Position.Vector) looking @(Position.Rotation)
+	@Name at @(Position.Vector) looking @(Position.Rotation)  <br />
+	@for (int i = 0; i < Stones.Length; i++)
+	{
+		<div>@(TileDisplay[i]): @(Stones[i])</div>
+	}
 </FluentTooltip>
 
 @code {
@@ -23,4 +27,9 @@
 
 	[Parameter]
 	public bool IsSelected { get; set; } = false;
+
+	[Parameter]
+	public int[] Stones { get; set; } = [];
+
+	private static readonly string[] TileDisplay = ["Fekete", "Piros", "Zöld", "Sárga", "Hó"];
 }

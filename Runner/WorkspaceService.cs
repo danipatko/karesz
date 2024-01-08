@@ -95,7 +95,7 @@ namespace karesz.Runner
         // CONSTANTS
         public const string PROJECT_NAME = nameof(Karesz);
         public const string DEFAULT_DOCUMENT_NAME = "Diak.cs";
-        public const string DEFAULT_TEMPLATE = $@"using System;
+		public const string DEFAULT_TEMPLATE = $@"using System;
 
 namespace {nameof(Karesz)}
 {{
@@ -103,14 +103,16 @@ namespace {nameof(Karesz)}
     
     public partial class {nameof(Karesz.Form1)} : {nameof(Karesz.Form)}
     {{
-        public void {nameof(Karesz.Form1.DIÁK_ROBOTJAI)}()
+        public void {Preprocess.DIÁK_ROBOTJAI}()
         {{
             var karesz = Robot.Get(""Karesz"");
 
             karesz.Feladat = delegate () {{
+                karesz.Fordulj(jobbra);
+
                 while(!karesz.Ki_fog_lépni_a_pályáról()) {{
                     karesz.Lépj();
-                    // karesz.Tegyél_le_egy_kavicsot(fekete);
+                    // karesz.Tegyél_le_egy_kavicsot(piros);
                 }}
 
                 // suicide test

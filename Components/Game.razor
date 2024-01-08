@@ -1,8 +1,6 @@
 ﻿@inject IDialogService DialogService
 @inject HttpClient HttpClient
 
-	@* [Inject] public HttpClient HttpClient { get; set; } *@
-
 <FluentStack HorizontalGap="20" Style="padding: 1rem; padding-bottom: 0;" VerticalAlignment="VerticalAlignment.Center">
 	<FluentButton IconStart="@(new Icons.Filled.Size20.CaretRight())"
 				  Appearance="Appearance.Accent"
@@ -36,7 +34,8 @@
 		{
 			<Karesz IsSelected=@(SelectedRobot.Name == item.Name)
 					Position=@item.Position 
-					Name=@item.Name />
+					Name=@item.Name
+					Stones=@item.Stones />
 		}
 		@* projectiles *@
 		@foreach (var item in Projectiles)
@@ -94,7 +93,11 @@
 
 	CancellationTokenSource cts = new();
 
-	protected override void OnInitialized()
+	[Parameter]
+	[SupplyParameterFromQuery(Name = "level")]
+	public string? loadLevel { get; set; }
+
+	protected override async Task OnInitializedAsync()
 	{
 		// register game renderer
 		Core.Game.RenderFunction = async delegate (RenderUpdate data)
@@ -113,6 +116,10 @@
 				StateHasChanged();
 			});
 		};
+
+		// load level
+		if(loadLevel != null)
+			await OnLevelSelected(loadLevel);
 	}
 
 	private async Task Run()

@@ -40,7 +40,14 @@ namespace karesz.Core
 
 			Output.WriteLine("--- INVOKE FINISHED ---");
 
-            await Robot.RunAsync(RenderFunction, autoCleanup: false, cancellationToken: cancellationToken);
+			try
+			{
+	            await Robot.RunAsync(RenderFunction, autoCleanup: false, cancellationToken: cancellationToken);
+			}
+			catch (Exception e)
+			{
+				await Console.Error.WriteLineAsync(e.Message);
+			}
 
 			Output.WriteLine("--- GAME ENDED ---");
 
@@ -49,11 +56,12 @@ namespace karesz.Core
     }
 
 	// basic utility class because we don't want to expose robot instance position
-	public struct RobotInfo(string Name, Position Position)
+	public struct RobotInfo(string Name, Position Position, int[] Stones)
 	{
 		public string Name { get; set; } = Name;
 		public Position Position { get; set; } = Position;
-		public readonly bool IsEmpty { get => string.IsNullOrEmpty(Name); }
+        public int[] Stones { get; set; } = Stones;
+        public readonly bool IsEmpty { get => string.IsNullOrEmpty(Name); }
 		public readonly override string ToString() => $"'{Name}' at {Position}";
 	}
 
@@ -91,7 +99,7 @@ namespace karesz.Core
 
 		#region State getters
 
-		private static RobotInfo[] StatusQuo { get => Robots.Values.Select(x => new RobotInfo(x.Név, x.Position)).ToArray(); }
+		private static RobotInfo[] StatusQuo { get => Robots.Values.Select(x => new RobotInfo(x.Név, x.Position, x.Stones)).ToArray(); }
 		private static (int x, int y, Level.Tile tile)[]? Tiles { get => DidChangeMap ? CurrentLevel.Enumerate().ToArray() : null; }
 		private static RenderUpdate State { get => new(StatusQuo, Projectile.Shots, Tiles); }
 

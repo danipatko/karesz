@@ -4,9 +4,6 @@
 
     public class Form
     {
-        // this method is the entry point
-        public virtual void DIÁK_ROBOTJAI() { }
-
         public const int fekete = (int)Level.Tile.Black;
         public const int piros = (int)Level.Tile.Red;
         public const int zöld = (int)Level.Tile.Green;
@@ -26,8 +23,7 @@
         public Form()
         {
             Console.WriteLine("Creating default karesz...");
-            var karesz = Robot.Create("Karesz", startX: 2, startY: 2, startRotation: Direction.Up);
-            karesz.Teleport(10, 10);
+            _ = Robot.Create("Karesz", startX: 2, startY: 2, startRotation: Direction.Up);
         }
     };
 
