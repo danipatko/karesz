@@ -1,4 +1,6 @@
-﻿<div class="logs">
+﻿@inject IJSInProcessRuntime JsRuntime;
+
+<div class="logs">
 	<code>
 		@Content
 	</code>
@@ -13,6 +15,7 @@
 		{
 			Content = sender.ToString()!;
 			StateHasChanged();
+			JsRuntime.InvokeVoid("Editor.scrollLogs", "logs");
 		};
 	}
 }

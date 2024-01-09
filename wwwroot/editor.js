@@ -174,7 +174,28 @@ window.Editor = window.Editor || (function () {
         },
         dispose: function () {
             _editor = null;
-        }
+        },
+        // TODO: not here
+        scrollLogs: function (id) {
+            const element = document.getElementById(id);
+            if (!!element) element.scrollTop = element.scrollHeight;
+        },
+        copyToClipboard: function (level) {
+            const code = _editor.getValue();
+            const text = window.location.origin + "/?" + new URLSearchParams({ code, level }).toString()
+
+            navigator.clipboard.writeText(text)
+                .then(() => {
+                    alert("copied!");
+                }, (err) => {
+                    console.error('Could not copy text: ', err);
+                });
+
+        },
     }
 }());
 
+window.onbeforeunload = (e) => {
+    e.preventDefault();
+    return `Leave site? Changes that you made may not be saved.`;
+}

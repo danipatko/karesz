@@ -1,5 +1,6 @@
 ﻿@inject IDialogService DialogService
 @inject HttpClient HttpClient
+@inject IJSInProcessRuntime JsRuntime
 
 <FluentStack HorizontalGap="20" Style="padding: 1rem; padding-bottom: 0;" VerticalAlignment="VerticalAlignment.Center">
 	<FluentButton IconStart="@(new Icons.Filled.Size20.CaretRight())"
@@ -17,11 +18,13 @@
 
 	<FluentDivider Style="height: 30px;" Role="DividerRole.Presentation" Orientation="Orientation.Vertical"></FluentDivider>
 
-	<FluentSelect Disabled=@Robot.IsRunning Height="50vh" TOption="string" Items=@Core.Level.LEVEL_NAMES SelectedOptionChanged="@OnLevelSelected" Value=@(Core.Robot.CurrentLevel.LevelName) /> 
+	<FluentSelect Disabled=@Robot.IsRunning Height="50vh" Width="75px" TOption="string" Items=@Core.Level.LEVEL_NAMES SelectedOptionChanged="@OnLevelSelected" Value=@(Core.Robot.CurrentLevel.LevelName) /> 
 
 	<FluentSwitch @bind-Value="@DisplayHeatmap">Heatmap</FluentSwitch>
 
     <FluentButton Disabled=@Robot.IsRunning @onclick=@Reset IconStart="@(new Icons.Regular.Size16.ArrowUndo())">Reset level</FluentButton>
+
+    <FluentButton @onclick=ShareHandler IconStart="@(new Icons.Regular.Size16.Share())">Share</FluentButton>
 </FluentStack>
 
 @* stuff *@
@@ -32,10 +35,7 @@
 		@* players *@
 		@foreach (var item in Robots)
 		{
-			<Karesz IsSelected=@(SelectedRobot.Name == item.Name)
-					Position=@item.Position 
-					Name=@item.Name
-					Stones=@item.Stones />
+			<Karesz IsSelected=@(SelectedRobot.Name == item.Name) Info=@item />
 		}
 		@* projectiles *@
 		@foreach (var item in Projectiles)
@@ -101,27 +101,25 @@
 	protected override async Task OnInitializedAsync()
 	{
 		// register game renderer
-		Core.Game.RenderFunction = async delegate (RenderUpdate data)
-		{
-			// make sure we are running in the UI sync context
-			await InvokeAsync(() =>
-			{
-				Robots = data.Robots;
-
-				if (data.Tiles != null)
-					Tiles = data.Tiles;
-
-				if (data.Projectiles != null)
-					Projectiles = data.Projectiles;
-
-				StateHasChanged();
-			});
-		};
+		Core.Game.RenderFunction = Render;
 
 		// load level
 		if(loadLevel != null)
 			await OnLevelSelected(loadLevel);
 	}
+
+	private async Task Render(RenderUpdate data) => await InvokeAsync(() =>
+	{
+		Robots = data.Robots;
+
+		if (data.Tiles != null)
+			Tiles = data.Tiles;
+
+		if (data.Projectiles != null)
+			Projectiles = data.Projectiles;
+
+		StateHasChanged();
+	});
 
 	private async Task Run()
 	{
@@ -143,24 +141,18 @@
 
 	private async Task Stop() => await cts.CancelAsync();
 
-	private void Reset()
-	{
-		Tiles = Robot.Cleanup();
-		Projectiles = [];
-		StateHasChanged();
-	}
+	private async Task Reset() => await Render(Robot.Cleanup());
 
 	private async Task OnLevelSelected(string levelName)
 	{
 		var level = await Core.Level.LoadAsync(HttpClient, levelName);
-		// TODO: alert
 		if (level == null)
-		{
 			return;
-		}
 
 		Tiles = level.Enumerate().ToArray();
 		HeatStyle = string.Join("\n", level.EnumerateHeat().Select((a) => $".tile.x{a.x}.y{a.y} {{ background-color: {RGBScale(a.h, max: 700f)} !important; }}"));
+
+		Robots = Robot.Cleanup().Robots;
 		StateHasChanged();
 	}
 
@@ -222,11 +214,16 @@
 
 	private void RemoveHandler()
 	{
-		if(!SelectedRobot.IsEmpty)
+		if(EnsureSelectedRobot())
 		{
 			Robots = Robot.Delete(SelectedRobot.Name);
 			StateHasChanged();
 		}
+	}
+
+	private void ShareHandler()
+	{
+		JsRuntime.InvokeVoid("Editor.copyToClipboard", Robot.CurrentLevel.LevelName);
 	}
 
 	#endregion

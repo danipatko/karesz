@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using System.ComponentModel;
+using karesz.Components;
 
 namespace karesz.Core
 {
@@ -117,6 +118,15 @@ namespace karesz.Core
 
         public static async Task<Level?> LoadAsync(HttpClient httpClient, string levelName)
         {
+            Plugin.Get(Robot.CurrentLevel.LevelName)?.Cleanup();
+            
+            if (levelName == "default")
+            {
+                var level = Default;
+				Robot.CurrentLevel = level;
+				return level;
+			}
+
             // use cache if available
             if (CachedMaps.TryGetValue(levelName, out var levelMap))
             {
@@ -242,10 +252,12 @@ namespace karesz.Core
         #region Hard-coded level options
 
         // level options for autocomplete
-        public static readonly string[] LEVEL_NAMES = ["l0.txt",
+        public static readonly string[] LEVEL_NAMES = ["default",
+            "l0.txt",
             "l1.txt",
             "l2.txt",
-            "palya01.txt",
+			"indiana.txt",
+			"palya01.txt",
             "palya02.txt",
             "palya03.txt",
             "palya04.txt",

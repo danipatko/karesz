@@ -3,16 +3,16 @@
 
 <PageTitle>karesz</PageTitle>
 
-<FluentSplitter Orientation="Orientation.Horizontal" Panel1Size="40%" BarSize="6" Panel2MinSize="10px">
+<FluentSplitter Orientation="Orientation.Horizontal" Panel1Size="50%" BarSize="6" Panel2MinSize="10px">
     <Panel1>
         <Editor />
     </Panel1>
     <Panel2>
-        <div style="height: 100%; display: flex; flex-direction: column;">
+        <div style="height: 100vh; display: flex; flex-direction: column; overflow: hidden;">
             <div>
                 <Game />
             </div>
-            <div style="flex-grow: 1; flex: 1; overflow-y: auto;">
+            <div id="logs" style="flex-grow: 1; flex: 1; overflow-y: auto; background-color: black;">
                 <Logs />
             </div>
         </div>

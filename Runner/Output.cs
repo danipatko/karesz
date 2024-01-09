@@ -71,7 +71,6 @@ namespace karesz.Runner
 		/// </summary>
 		public static async Task StartCaptureAsync()
 		{
-            await Console.Error.WriteLineAsync(">>> starting capture");
 			Writer = new();
 			if (FlushHandler != null)
 				Writer.Flushed += FlushHandler;
@@ -85,7 +84,6 @@ namespace karesz.Runner
 		/// </summary>
 		public static async Task ResetCaptureAsync()
 		{
-			await Console.Error.WriteLineAsync("||| ending capture");
 			// reset stdout
 			var stdout = new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = true };
 			Console.SetOut(stdout);

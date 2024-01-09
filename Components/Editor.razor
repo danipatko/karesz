@@ -1,4 +1,5 @@
 ﻿@using Microsoft.JSInterop;
+@inject IJSInProcessRuntime JsRuntime;
 
 <div class="editor" >
     <div class="editor-nav"></div>
@@ -20,9 +21,6 @@
 @code {
     private DotNetObjectReference<Editor>? dotnetObjRef;
 
-    [Inject]
-    public IJSInProcessRuntime JsRuntime { get; set; }
-
     [Parameter]
     public EventCallback<string> CodeChanged { get; set; }
 
@@ -42,7 +40,7 @@
     protected override void OnInitialized()
     {
         dotnetObjRef = DotNetObjectReference.Create(this);
-        this.JsRuntime.InvokeVoid("Editor.create", EditorId, defaultCode ?? WorkspaceService.DEFAULT_TEMPLATE, dotnetObjRef);
+        JsRuntime.InvokeVoid("Editor.create", EditorId, defaultCode ?? WorkspaceService.DEFAULT_TEMPLATE, dotnetObjRef);
     }
 
     [JSInvokable]

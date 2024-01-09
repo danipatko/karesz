@@ -1,6 +1,7 @@
 ﻿using Microsoft.VisualStudio.Threading;
 using karesz.Components;
 using karesz.Runner;
+using Microsoft.Extensions.FileSystemGlobbing.Internal.PathSegments;
 
 namespace karesz.Core
 {
@@ -38,7 +39,8 @@ namespace karesz.Core
 				return;
 			}
 
-			Console.WriteLine("--- INVOKE FINISHED ---");
+            // invoke plugins (if any)
+            Plugin.Get(Robot.CurrentLevel.LevelName)?.TANAR_ROBOTJAI();
 
 			await Robot.RunAsync(RenderFunction, autoCleanup: false, cancellationToken: cancellationToken)
 				.ContinueWith(async (_) =>
@@ -50,9 +52,10 @@ namespace karesz.Core
     }
 
 	// basic utility class because we don't want to expose robot instance position
-	public struct RobotInfo(string Name, Position Position, int[] Stones)
+	public struct RobotInfo(string Name, Position Position, bool alt, int[] Stones)
 	{
 		public string Name { get; set; } = Name;
+		public bool Alt { get; set; } = alt;
 		public Position Position { get; set; } = Position;
         public int[] Stones { get; set; } = Stones;
         public readonly bool IsEmpty { get => string.IsNullOrEmpty(Name); }
@@ -93,7 +96,7 @@ namespace karesz.Core
 
 		#region State getters
 
-		private static RobotInfo[] StatusQuo { get => Robots.Values.Select(x => new RobotInfo(x.Név, x.Position, x.Stones)).ToArray(); }
+		private static RobotInfo[] StatusQuo { get => Robots.Values.Select(x => new RobotInfo(x.Név, x.Position, x.Alt, x.Stones)).ToArray(); }
 		private static (int x, int y, Level.Tile tile)[]? Tiles { get => DidChangeMap ? CurrentLevel.Enumerate().ToArray() : null; }
 		private static RenderUpdate State { get => new(StatusQuo, Projectile.Shots, Tiles); }
 
@@ -104,18 +107,17 @@ namespace karesz.Core
 		// throws an exception if name is not present in dictionary
 		public static Robot Get(string név) => Robots[név]!;
 
-        public static Robot Create(string név, int startX = 0, int startY = 0, Direction startRotation = Direction.Up)
+        public static Robot Create(string név, int startX = 0, int startY = 0, Direction startRotation = Direction.Up, bool alt = false)
 		{
+			var target = new Position(startX, startY, startRotation);
 			if (Robots.TryGetValue(név, out var robot))
 			{
 				Console.Error.WriteLine($"{név} robot már létezik, nem lesz új robot létrehozva.");
-				robot.Position = new Position(startX, startY, startRotation);
+				robot.Position = robot.CurrentPosition = target;
                 return robot;
 			}
 
-			var r = new Robot(név) { CurrentPosition = new Position(startX, startY, startRotation) };
-            Console.WriteLine(r);
-            
+			var r = new Robot(név) { CurrentPosition = target, ProposedPosition = target, Alt = alt };         
             Robots.Add(név, r);
 			return r;
 		}
@@ -133,12 +135,17 @@ namespace karesz.Core
         /// Sets the position of a robot, by name
         /// won't take effect while game is running
         /// </summary>
-        public static RobotInfo[] PlaceAt(string name, int x, int y)
+        public static RobotInfo[] PlaceAt(string name, int x, int y, Direction? rotation = null)
         {
             if (!IsRunning && Robots.TryGetValue(name, out var robot))
-                robot.CurrentPosition.Vector = new Vector(x, y);
+			{
+                if(rotation.HasValue) 
+					robot.CurrentPosition = new Position(x, y, rotation.Value);
+				else
+					robot.CurrentPosition.Vector = new Vector(x, y);
+			}
 
-            return StatusQuo;
+			return StatusQuo;
         }
 
         public static RobotInfo[] Move(string name, RelativeDirection direction = RelativeDirection.Right)
@@ -164,24 +171,27 @@ namespace karesz.Core
 		/// <summary>
 		/// List all robot objects that are about to die in this round
 		/// </summary>
-		private static IEnumerable<string> RobotsToExecute()
+		private static IEnumerable<(string name, string reason)> RobotsToExecute()
         {
             foreach (var robot in Robots.Values)
             {
                 // steps into wall
                 if (CurrentLevel[robot.ProposedPosition.Vector] == Level.Tile.Wall)
-                    yield return robot.Név;
-                // out of bounds
-                if (!CurrentLevel.InBounds(robot.ProposedPosition.Vector))
-                    yield return robot.Név;
+                    yield return (robot.Név, "nekiment egy falnak");
+				// ...or lava
+				if (CurrentLevel[robot.ProposedPosition.Vector] == Level.Tile.Lava)
+					yield return (robot.Név, "lávába esett");
+				// out of bounds
+				if (!CurrentLevel.InBounds(robot.ProposedPosition.Vector))
+                    yield return (robot.Név, "kiesett a pályáról");
                 // stepping on the same field or stepping over one another
                 if (Robots.Values.Any(other => other.Név != robot.Név 
                     && (robot.ProposedPosition.Vector == other.ProposedPosition.Vector 
                     || (robot.ProposedPosition.Vector == other.Position.Vector && other.ProposedPosition.Vector == robot.Position.Vector))))
-                    yield return robot.Név;
+                    yield return (robot.Név, "összeütközött");
                 // hit by projectile
                 if (Projectile.IsHit(robot.ProposedPosition))
-                    yield return robot.Név;
+                    yield return (robot.Név, "találat érte");
             }
         }
 
@@ -194,10 +204,10 @@ namespace karesz.Core
 			Projectile.TickAll();
 
 			// remove killed robots
-			foreach (string name in RobotsToExecute().Distinct())
+			foreach ((string name, string reason) in RobotsToExecute().Distinct())
 			{
 				Kill(name);
-				Console.WriteLine($"[{name}] died");
+				Console.WriteLine($"[{name}] {reason}");
 			}
 
 			// step survivors
@@ -292,19 +302,20 @@ namespace karesz.Core
 		}
 
 		/// <summary>
-        /// Resets tick counter, removes all rocks placed in the run.
-        /// If removeRobots is true, every player's robot will be deleted.
-        /// </summary>
-        public static (int x, int y, Level.Tile tile)[] Cleanup(bool removeRobots = false)
+		/// Resets tick counter, removes all rocks placed in the run.
+		/// If removeRobots is true, every player's robot will be deleted.
+		/// </summary>
+		public static RenderUpdate Cleanup(bool removeRobots = false)
 		{
 			if (removeRobots)
 				Robots.Clear();
 
+			Plugin.Get(CurrentLevel.LevelName)?.Cleanup();
 			CurrentLevel.Reset();
             Projectile.Clear();
 			TickCount = 0;
 
-			return CurrentLevel.Enumerate().ToArray();
+			return State;
 		}
 
 		#endregion

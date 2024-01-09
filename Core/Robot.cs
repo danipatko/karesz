@@ -26,6 +26,11 @@ namespace karesz.Core
         public bool Debug { get; set; } = false;
 
         /// <summary>
+        /// Use resource lilesz.png
+        /// </summary>
+        public bool Alt { get; init; } = false;
+
+        /// <summary>
         /// !IMPORTANT! Only set Position when game is running
         /// The real position is CurrentPosition, and will be only updated after a game round
         /// </summary>
@@ -208,7 +213,9 @@ namespace karesz.Core
         }
 
 #pragma warning disable CA1822 // Mark members as static
-        public async Task Várj() => await Tick();
+        public void Várj() { }
+
+		public async Task VárjAsync() => await Tick();
 #pragma warning restore CA1822
 
         // --- SZENZOROK ---

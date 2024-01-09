@@ -1,35 +1,33 @@
-﻿<div id="@Name" 
+﻿<div id="@Info.Name"
 	 tabindex="-1" 
 	 role="button" 
 	 class="robot @(IsSelected ? "selected" : string.Empty)" 
-	 style="--rotation: @((int)Position.Rotation); --offset-x: @(Position.Vector.x); --offset-y: @(Position.Vector.y)">
-	<img src="/sprites/karesz.png" />
+	 style="--rotation: @((int)Info.Position.Rotation); --offset-x: @(Info.Position.Vector.x); --offset-y: @(Info.Position.Vector.y)">
+	<img src="@(Info.Alt ? "/sprites/lilesz.png" : "/sprites/karesz.png")" />
 </div>
 
-<FluentTooltip Anchor="@Name"
+<FluentTooltip Anchor="@Info.Name"
 			   Delay="0"
 			   MaxWidth="400px"
 			   UseTooltipService="false"
 			   Position="TooltipPosition.Bottom">
-	@Name at @(Position.Vector) looking @(Position.Rotation)  <br />
-	@for (int i = 0; i < Stones.Length; i++)
+
+	@Info.Name at @(Info.Position.Vector) looking @(Info.Position.Rotation)  <br />
+	@if (!Info.Alt)
 	{
-		<div>@(TileDisplay[i]): @(Stones[i])</div>
+		@for (int i = 0; i < Info.Stones.Length; i++)
+		{
+			<div>@(TileDisplay[i]): @(Info.Stones[i])</div>
+		}
 	}
 </FluentTooltip>
 
 @code {
 	[Parameter]
-	public Position Position { get; set; }
-
-	[Parameter]
-	public string Name { get; set; } = "Karesz";
+	public Core.RobotInfo Info { get; set; }
 
 	[Parameter]
 	public bool IsSelected { get; set; } = false;
-
-	[Parameter]
-	public int[] Stones { get; set; } = [];
 
 	private static readonly string[] TileDisplay = ["Fekete", "Piros", "Zöld", "Sárga", "Hó"];
 }

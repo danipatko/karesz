@@ -1,4 +1,5 @@
 using karesz;
+using karesz.Core;
 using karesz.Runner;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -25,6 +26,8 @@ _ = Task.Run(async () =>
 {
     await WorkspaceService.InitAsync(httpClient);
     await CompilerSerivce.InitAsync(WorkspaceService.BasicReferenceAssemblies);
+
+    Plugin.LoadPlugins();
 });
 
 await builder.Build().RunAsync();

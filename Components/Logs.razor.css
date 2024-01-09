@@ -3,11 +3,13 @@
     white-space: pre;
     font-size: .9rem;
     letter-spacing: 0.02rem;
+    height: 100%;
+    width: 100%;
+    color: whitesmoke;
 }
 
 .logs {
     padding: 0.5rem;
     width: 100%;
-    background-color: black;
-    overflow: hidden;
+    height: 100%;
 }
