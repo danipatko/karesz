@@ -84,7 +84,7 @@ namespace karesz.Runner
             await Task.WhenAll(
                 assemblyNames.Select(async assemblyName =>
                 {
-                    var result = await httpClient.GetAsync($"/_framework/{assemblyName}.dll");
+                    var result = await httpClient.GetAsync($"_framework/{assemblyName}.dll");
                     result.EnsureSuccessStatusCode();
                     streams.TryAdd(assemblyName, await result.Content.ReadAsStreamAsync());
                 }));
