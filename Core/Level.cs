@@ -160,7 +160,7 @@ namespace karesz.Core
             if (!LEVEL_NAMES.Contains(levelName))
                 await Console.Error.WriteLineAsync($"Warning: '{levelName}' is not present in options.");
 
-            var result = await httpClient.GetAsync($"/levels/{levelName}");
+            var result = await httpClient.GetAsync($"levels/{levelName}");
             result.EnsureSuccessStatusCode();
             return await result.Content.ReadAsStringAsync();
         }
