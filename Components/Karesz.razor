@@ -3,7 +3,7 @@
 	 role="button" 
 	 class="robot @(IsSelected ? "selected" : string.Empty)" 
 	 style="--rotation: @((int)Info.Position.Rotation); --offset-x: @(Info.Position.Vector.x); --offset-y: @(Info.Position.Vector.y)">
-	<img src="@(Info.Alt ? "/sprites/lilesz.png" : "/sprites/karesz.png")" />
+	<img src="@(Info.Alt ? "sprites/lilesz.png" : "sprites/karesz.png")" />
 </div>
 
 <FluentTooltip Anchor="@Info.Name"
