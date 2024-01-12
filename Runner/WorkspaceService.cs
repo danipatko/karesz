@@ -106,20 +106,9 @@ namespace {nameof(Karesz)}
         public void {Preprocess.DIÁK_ROBOTJAI}()
         {{
             var karesz = Robot.Get(""Karesz"");
-            karesz.Debug = true;
 
             karesz.Feladat = delegate () {{
-                karesz.Fordulj(jobbra);
-
-                while(!karesz.Ki_fog_lépni_a_pályáról()) {{
-                    karesz.Lépj();
-                    // karesz.Tegyél_le_egy_kavicsot(piros);
-                }}
-
-                // suicide test
-                karesz.Lépj();
-
-                Console.WriteLine(""exiting"");
+                // ide kódolj!
             }};
         }}
     }}

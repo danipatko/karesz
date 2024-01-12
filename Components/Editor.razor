@@ -57,9 +57,9 @@
     }
 
     [JSInvokable]
-    public async Task<object?> getHoverinfo(int offset)
+    public async Task<object?> getHoverinfo(string code, int offset)
     {
-        return (object?)(await HoverinfoProvider.GetHoverinfoAsync(offset));
+        return (object?)(await HoverinfoProvider.GetHoverinfoAsync(code, offset));
     }
 
     [JSInvokable]

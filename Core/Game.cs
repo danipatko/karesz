@@ -1,7 +1,6 @@
 ﻿using Microsoft.VisualStudio.Threading;
 using karesz.Components;
 using karesz.Runner;
-using Microsoft.Extensions.FileSystemGlobbing.Internal.PathSegments;
 
 namespace karesz.Core
 {
@@ -90,7 +89,6 @@ namespace karesz.Core
 
         // used for signalling & waiting
         private static readonly AsyncManualResetEvent resetEvent = new(false);
-		private static CancellationToken CancellationToken = CancellationToken.None;
 
 		#endregion
 
@@ -113,11 +111,11 @@ namespace karesz.Core
 			if (Robots.TryGetValue(név, out var robot))
 			{
 				Console.Error.WriteLine($"{név} robot már létezik, nem lesz új robot létrehozva.");
-				robot.Position = robot.CurrentPosition = target;
+				robot.ProposedPosition = robot.CurrentPosition = target;
                 return robot;
 			}
 
-			var r = new Robot(név) { CurrentPosition = target, ProposedPosition = target, Alt = alt };         
+			var r = new Robot(név) { CurrentPosition = target, ProposedPosition = target, Alt = alt };
             Robots.Add(név, r);
 			return r;
 		}
@@ -139,10 +137,10 @@ namespace karesz.Core
         {
             if (!IsRunning && Robots.TryGetValue(name, out var robot))
 			{
-                if(rotation.HasValue) 
-					robot.CurrentPosition = new Position(x, y, rotation.Value);
+                if (rotation.HasValue)
+                    robot.ProposedPosition = robot.CurrentPosition = new Position(x, y, rotation.Value);
 				else
-					robot.CurrentPosition.Vector = new Vector(x, y);
+                    robot.ProposedPosition.Vector = robot.CurrentPosition.Vector = new Vector(x, y);
 			}
 
 			return StatusQuo;
@@ -171,48 +169,48 @@ namespace karesz.Core
 		/// <summary>
 		/// List all robot objects that are about to die in this round
 		/// </summary>
-		private static IEnumerable<(string name, string reason)> RobotsToExecute()
+		private static IEnumerable<(string name, string reason, Vector place)> RobotsToExecute()
         {
             foreach (var robot in Robots.Values)
             {
                 // steps into wall
                 if (CurrentLevel[robot.ProposedPosition.Vector] == Level.Tile.Wall)
-                    yield return (robot.Név, "nekiment egy falnak");
+                    yield return (robot.Név, "nekiment egy falnak", robot.ProposedPosition.Vector);
 				// ...or lava
 				if (CurrentLevel[robot.ProposedPosition.Vector] == Level.Tile.Lava)
-					yield return (robot.Név, "lávába esett");
+					yield return (robot.Név, "lávába esett", robot.CurrentPosition.Vector);
 				// out of bounds
 				if (!CurrentLevel.InBounds(robot.ProposedPosition.Vector))
-                    yield return (robot.Név, "kiesett a pályáról");
+                    yield return (robot.Név, "kiesett a pályáról", robot.Position.Vector);
                 // stepping on the same field or stepping over one another
                 if (Robots.Values.Any(other => other.Név != robot.Név 
                     && (robot.ProposedPosition.Vector == other.ProposedPosition.Vector 
                     || (robot.ProposedPosition.Vector == other.Position.Vector && other.ProposedPosition.Vector == robot.Position.Vector))))
-                    yield return (robot.Név, "összeütközött");
+                    yield return (robot.Név, "összeütközött", robot.ProposedPosition.Vector);
                 // hit by projectile
                 if (Projectile.IsHit(robot.ProposedPosition))
-                    yield return (robot.Név, "találat érte");
+                    yield return (robot.Név, "találat érte", robot.ProposedPosition.Vector);
             }
         }
 
         /// <summary>
         /// Perform a round in game
         /// </summary>
-		private static void MakeRound()
+		private static async Task MakeRoundAsync()
 		{
 			// move projectiles
 			Projectile.TickAll();
 
 			// remove killed robots
-			foreach ((string name, string reason) in RobotsToExecute().Distinct())
+			foreach (var info in RobotsToExecute().Distinct().ToArray())
 			{
-				Kill(name);
-				Console.WriteLine($"[{name}] {reason}");
+                await KillAsync(info.name, info.place);
+				Console.WriteLine($"[{info.name}] {info.reason}");
 			}
 
 			// step survivors
 			foreach (Robot robot in Robots.Values)
-				robot.CurrentPosition = robot.ProposedPosition;
+                robot.CurrentPosition = robot.ProposedPosition;
 
 			TickCount++;
 		}
@@ -228,23 +226,24 @@ namespace karesz.Core
             IsRunning = true;
 			await render.Invoke(State); // render before start
 
-			var cts = new CancellationTokenSource();
             // create a combined token so token can be cancelled after the while loop
-            var cct = cts.Token.CombineWith(cancellationToken);
-            // make the combined CancellationToken available to async tick() calls
-            // cancelling Task.Run will not dispose the task it is running, just request a cancellation
-            // if the task is blocking at a resetEvent.WaitOne() call, the task will run indefinitely
-            CancellationToken = cct.Token;
+            var manualCTS = new CancellationTokenSource();
+			var mct = cancellationToken.CombineWith(manualCTS.Token).Token;
 
 			List<Task> runningTasks = [];
 			foreach (var robot in Robots.Values)
 			{
-				var task = Task.Run(robot.FeladatAsync.Invoke, cct.Token);
+				// make the combined CancellationToken available to async tick() calls
+				// cancelling Task.Run will not dispose the task it is running, just request a cancellation
+				// if the task is blocking at a resetEvent.WaitOne() call, the task will run indefinitely
+				robot.FeladatHandle = new();
+                robot.CancellationToken = robot.FeladatHandle.Token.CombineWith(cancellationToken, manualCTS.Token).Token;
+				var task = Task.Run(robot.FeladatAsync.Invoke, robot.CancellationToken);
 				runningTasks.Add(task);
 			}
 
-			// run cleanup on cancel
-			CancellationToken.Register(() =>
+            // run cleanup on cancel
+            mct.Register(() =>
 			{
 				foreach (var item in runningTasks)
 				{
@@ -262,16 +261,16 @@ namespace karesz.Core
 				_ = render.Invoke(State);
 			});
 
-            while (!CancellationToken.IsCancellationRequested && Robots.Count > 0)
+            while (!mct.IsCancellationRequested && Robots.Count > 0)
             {
                 // block Tick() calls again
                 resetEvent.Reset();
 
                 // time for robot tasks to block again
-                await Task.Delay(TICK_INTERVAL, CancellationToken);
+                await Task.Delay(TICK_INTERVAL, mct);
 
                 // run multiplayer logic
-                MakeRound();
+                await MakeRoundAsync();
 
 				// trigger UI render
 				await render.Invoke(State);
@@ -288,17 +287,21 @@ namespace karesz.Core
 			resetEvent.Reset();
 
 			// still need to cancel
-			if (!CancellationToken.IsCancellationRequested)
-                await cts.CancelAsync();
+			if (!mct.IsCancellationRequested)
+                await manualCTS.CancelAsync();
 		}
 
         /// <summary>
         /// Remove a robot from players and place a black rock to the place of death
         /// </summary>
-		private static void Kill(string name)
+		private static async Task KillAsync(string name, Vector? graveLocation)
 		{
 			if (Robots.Remove(name, out var robot))
-				CurrentLevel[robot.Position.Vector] = Level.Tile.Black;
+			{
+				await robot.FeladatHandle.CancelAsync();
+	            CurrentLevel[graveLocation ?? robot.Position.Vector] = Level.Tile.Black;
+                DidChangeMap = true;
+            }
 		}
 
 		/// <summary>

@@ -18,7 +18,7 @@
 
 	<FluentDivider Style="height: 30px;" Role="DividerRole.Presentation" Orientation="Orientation.Vertical"></FluentDivider>
 
-	<FluentSelect Disabled=@Robot.IsRunning Height="50vh" Width="75px" TOption="string" Items=@Core.Level.LEVEL_NAMES SelectedOptionChanged="@OnLevelSelected" Value=@(Core.Robot.CurrentLevel.LevelName) /> 
+	<FluentSelect Style="width: 50px;" Disabled=@Robot.IsRunning Height="50vh" Width="50px" TOption="string" Items=@Core.Level.LEVEL_NAMES SelectedOptionChanged="@OnLevelSelected" Value=@(Core.Robot.CurrentLevel.LevelName) /> 
 
 	<FluentSwitch @bind-Value="@DisplayHeatmap">Heatmap</FluentSwitch>
 
@@ -162,8 +162,10 @@
 	/// <returns>false if there are no robots</returns>
 	private bool EnsureSelectedRobot()
 	{
-		if (Robots.Length == 0) return false; // ignore click
-													// FluentSelect will not set bound SelectedRobot if there is only one option, so we have to do it manually
+		if (Robots.Length == 0)
+			return false; // ignore click
+		
+		// FluentSelect will not set bound SelectedRobot if there is only one option, so we have to do it manually
 		if(SelectedRobot.IsEmpty)
 			SelectedRobot = Robots[0]!;
 

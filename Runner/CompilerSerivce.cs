@@ -91,11 +91,16 @@ namespace karesz.Runner
                 type.InvokeMember(TARGET_METHOD, BINDING_FLAGS, null, instance, null);
                 return true;
             }
+            catch (TargetInvocationException e)
+            {
+                Console.WriteLine("{0}\n{1}", e.InnerException!.Message, e.InnerException.StackTrace);
+            }
             catch (Exception e)
             {
                 Console.WriteLine("Failed to find entry point.\n{0}", e.Message);
-                return false;
             }
+
+            return false;
         }
     }
 }

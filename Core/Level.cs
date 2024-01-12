@@ -1,6 +1,5 @@
 ﻿using System.Collections.Immutable;
 using System.ComponentModel;
-using karesz.Components;
 
 namespace karesz.Core
 {

@@ -117,7 +117,7 @@ function registerLangugageProvider(_editor) {
             };
 
             if (_dotNetInstance) {
-                const data = await _dotNetInstance.invokeMethodAsync('getHoverinfo', offset);
+                const data = await _dotNetInstance.invokeMethodAsync('getHoverinfo', _editor.getValue(), offset);
                 if (data != null) {
                     return { range, contents: [{ value: `\`\`\`csharp\n${data}\n\`\`\`` }] }
                 }
@@ -195,7 +195,7 @@ window.Editor = window.Editor || (function () {
     }
 }());
 
-window.onbeforeunload = (e) => {
-    e.preventDefault();
-    return `Leave site? Changes that you made may not be saved.`;
-}
+//window.onbeforeunload = (e) => {
+//    e.preventDefault();
+//    return `Leave site? Changes that you made may not be saved.`;
+//}

@@ -19,11 +19,10 @@
         public const int dél = 2;
         public const int nyugat = 3;
 
-        // TODO: add plugins and stuff here
         public Form()
         {
-            Console.WriteLine("Creating default karesz...");
-            _ = Robot.Create("Karesz", startX: 2, startY: 2, startRotation: Direction.Up);
+            //Console.WriteLine("Creating default karesz...");
+            //_ = Robot.Create("Karesz", startX: 0, startY: 0, startRotation: Direction.Up);
         }
     };
 

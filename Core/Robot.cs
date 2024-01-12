@@ -1,6 +1,7 @@
 ﻿#pragma warning disable VSTHRD200 // Use "Async" suffix for async methods (bullshit warning)
 
 using karesz.Runner;
+using Microsoft.VisualStudio.Threading;
 
 namespace karesz.Core
 {
@@ -29,6 +30,9 @@ namespace karesz.Core
         /// Use resource lilesz.png
         /// </summary>
         public bool Alt { get; init; } = false;
+
+        private CancellationTokenSource FeladatHandle { get; set; }
+        private CancellationToken CancellationToken { get; set; }
 
         /// <summary>
         /// !IMPORTANT! Only set Position when game is running
@@ -61,7 +65,7 @@ namespace karesz.Core
 
         private void Say(string message) => Console.WriteLine($"[{Név}] {message}");
 
-        private static async Task Tick()
+        private async Task Tick()
         {
             // block until released
             await resetEvent.WaitAsync(CancellationToken);
@@ -158,7 +162,6 @@ namespace karesz.Core
             Stones[szín - 2]--;
 
             DidChangeMap = true;
-
         }
 
         public async Task Tegyél_le_egy_kavicsotAsync(int szín = Karesz.Form.fekete)
