@@ -1,0 +1,212 @@
+@import '_content/Microsoft.FluentUI.AspNetCore.Components/Microsoft.FluentUI.AspNetCore.Components.bundle.scp.css';
+
+/* /Components/Editor.razor.rz.scp.css */
+.editor[b-pbbia4bgjf] {
+    --issue-display-height: 32px;
+    --statusbar-height: 24px;
+
+    position: relative;
+}
+
+.editor-container[b-pbbia4bgjf] {
+    height: calc(100vh - var(--statusbar-height));
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.output-window[b-pbbia4bgjf] {
+    position: absolute;
+    left: 0;
+    bottom: var(--statusbar-height);
+    width: 100%;
+    z-index: 50;
+    overflow-x: hidden;
+}
+
+.output-window > div[b-pbbia4bgjf] {
+    font-family: monospace;
+    height: var(--issue-display-height);
+    background-color: var(--error);
+    padding: 0.5rem 1rem;
+    white-space: pre;
+}
+
+.editor-statusbar[b-pbbia4bgjf] {
+    background-color: var(--accent-base-color); /* vscode blue */
+    height: var(--statusbar-height);
+    width: 100%;
+    padding: 0 0.5rem;
+    display: flex;
+    justify-content: start;
+    align-items: center;
+}
+
+.editor-statusbar.compiling[b-pbbia4bgjf] {
+    background-color: var(--presence-away);
+}
+
+.editor-statusbar.haserror[b-pbbia4bgjf] {
+    background-color: var(--error);
+}
+/* /Components/Game.razor.rz.scp.css */
+.game-container[b-qtl7410rrh] {
+    position: relative;
+    margin: 1rem;
+/*    width: calc(100% - 2rem); */
+    height: auto;
+    overflow: hidden;
+}
+/* /Components/Golyesz.razor.rz.scp.css */
+.golyesz[b-zhm85peten] {
+    position: absolute;
+    left: calc(var(--offset-x) * var(--tile-size) + var(--offset-x) * 1px);
+    top: calc(var(--offset-y) * var(--tile-size) + var(--offset-y) * 1px);
+    transform: rotate(calc(var(--rotation) * 90deg));
+
+    display: block;
+    aspect-ratio: 1;
+    width: var(--tile-size);
+    height: var(--tile-size);
+
+    z-index: 10;
+
+    transition: all ease-in-out 50ms;
+}
+
+.golyesz img[b-zhm85peten] {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 1;
+}
+
+/* /Components/Karesz.razor.rz.scp.css */
+.robot[b-uwj2vlua6n] {
+    position: absolute;
+    left: calc(var(--offset-x) * var(--tile-size) + var(--offset-x) * 1px);
+    top: calc(var(--offset-y) * var(--tile-size) + var(--offset-y) * 1px);
+    transform: rotate(calc(var(--rotation) * 90deg));
+
+    display: block;
+    aspect-ratio: 1;
+    width: var(--tile-size);
+    height: var(--tile-size);
+
+    z-index: 10;
+
+    transition: all ease-in-out 50ms;
+}
+
+.robot img[b-uwj2vlua6n] {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 1;
+}
+/* /Components/Level.razor.rz.scp.css */
+.level-container[b-jg5cteizcg] {
+    display: grid;
+    /*grid-template-columns: repeat(var(--level-cols), 1fr);*/
+    grid-template-columns: repeat(var(--level-cols), var(--tile-size));
+    grid-gap: 1px;
+    width: 100%;
+    height: auto;
+}
+
+.level-container > .tile[b-jg5cteizcg] {
+    background-color: #d3d3d3;
+    aspect-ratio: 1;
+}
+
+.level-container > .overlayed[b-jg5cteizcg] {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+/* /Components/Logs.razor.rz.scp.css */
+.logs code[b-su9a6wkdwp] {
+    font-family: monospace;
+    white-space: pre;
+    font-size: .9rem;
+    letter-spacing: 0.02rem;
+    height: 100%;
+    width: 100%;
+    color: whitesmoke;
+}
+
+.logs[b-su9a6wkdwp] {
+    padding: 0.5rem;
+    width: 100%;
+    height: 100%;
+}
+/* /Components/Stone.razor.rz.scp.css */
+.stone[b-c4uefx39rj] {
+    position: absolute;
+    left: calc(var(--offset-x) * var(--tile-size) + var(--offset-x) * 1px);
+    top: calc(var(--offset-y) * var(--tile-size) + var(--offset-y) * 1px);
+    display: block;
+    aspect-ratio: 1;
+    width: var(--tile-size);
+    height: var(--tile-size);
+    pointer-events: none;
+}
+
+.stone.Wall[b-c4uefx39rj] {
+    width: calc(var(--tile-size) + 1px);
+    height: calc(var(--tile-size) + 1px);
+    background-color: #a52a2a;
+}
+
+.stone.Black[b-c4uefx39rj] {
+    border-radius: 9999px;
+    background-color: black;
+}
+
+.stone.Red[b-c4uefx39rj] {
+    border-radius: 9999px;
+    background-color: red;
+}
+
+.stone.Green[b-c4uefx39rj] {
+    border-radius: 9999px;
+    background-color: green;
+}
+
+.stone.Yellow[b-c4uefx39rj] {
+    border-radius: 9999px;
+    background-color: yellow;
+}
+
+.stone.Snow[b-c4uefx39rj] {
+    border-radius: 9999px;
+    background-color: white;
+}
+
+.stone.Lava[b-c4uefx39rj] {
+    width: calc(var(--tile-size) + 1px);
+    height: calc(var(--tile-size) + 1px);
+    background-color: #ffa500;
+}
+
+.stone.Water[b-c4uefx39rj] {
+    width: calc(var(--tile-size) + 1px);
+    height: calc(var(--tile-size) + 1px);
+    background-color: #0000ff;
+}
+
+/*disable animation for now*/
+/*.stone.Black,
+.stone.Red,
+.stone.Green,
+.stone.Yellow,
+.stone.Snow {
+    animation: dropin ease-out 100ms;
+}*/
+
+@keyframes dropin-b-c4uefx39rj {
+    from {
+        transform: scale(0);
+    }
+    to {
+        transform: scale(1);
+    }
+}
